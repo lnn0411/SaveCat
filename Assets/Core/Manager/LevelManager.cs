@@ -62,6 +62,7 @@ public class LevelManager : Singleton<LevelManager>
 
         // 获取路径预制体 后期可以放在管卡配置里面
         SplineContainer targetSpline = FindObjectOfType<SplineContainer>();
+        // 龙和猫咪出现
         DragonManager.Instance.Init(config, targetSpline, shuffledDragonColorPool);
 
         //防守方血量

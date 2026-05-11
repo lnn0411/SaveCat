@@ -38,7 +38,7 @@ public class UIManager : Singleton<UIManager>
         float dt = Time.deltaTime;
         for(int i = 0; i < _uiCount; i++)
         {
-            if(registeredViews[i] != null)
+            if(registeredViews[i] != null && registeredViews[i].NeedsUpdate)
             {
                 registeredViews[i].OnUpdateView(dt);
             }
@@ -72,7 +72,7 @@ public class UIManager : Singleton<UIManager>
         }
 
         // Load prefab from Resources (assuming UI prefabs are in Resources/UI folder)
-        GameObject prefab = Resources.Load<GameObject>($"UI/{prefabName}");
+        GameObject prefab = Resources.Load<GameObject>($"Prefab/UI/{prefabName}");
         if (prefab == null)
         {
             Debug.LogError($"UI Prefab not found: UI/{prefabName}");
@@ -109,7 +109,6 @@ public class UIManager : Singleton<UIManager>
             {
                 view.Hide(); // This will trigger OnDisable -> auto-unregister
             }
-            activeViews.Remove(prefabName);
         }
     }
 

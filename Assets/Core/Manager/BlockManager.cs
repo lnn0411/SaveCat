@@ -87,12 +87,9 @@ public class BlockManager : Singleton<BlockManager>
             blockView.PlayEscapeAnimation(blockView.transform.position + blockView.transform.forward * 20f,() =>
             {
                 // 调用事件 当前方块逃脱成功了，回收这个方块对象，增加能量
-                EventManager.Broadcast((int)EventID.OnBlockEscapeSuccess, blockView.Data);
+                EventManager.Broadcast(EventID.OnBlockEscapeSuccess, blockView.Data);
                 PoolManager.Instance.Recycle(blockView.gameObject);
             });
-
-            //事件群发
-            EventManager.Broadcast((int)EventID.OnBlockEscapeSuccess, blockView);
         }
         else
         {

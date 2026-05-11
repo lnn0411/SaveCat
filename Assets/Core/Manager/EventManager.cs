@@ -1,202 +1,275 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 全局事件中心
+/// 事件分发中心
 /// </summary>
 public class EventManager
 {
-    //核心存储容器
-    private static readonly Dictionary<int, Delegate> m_EventTable = new Dictionary<int, Delegate>();
+    private static readonly Dictionary<int, Delegate> eventTable = new Dictionary<int, Delegate>();
 
-    #region 注册监听
-    /// <summary>
-    /// 无参数事件监听
-    /// </summary>
-    /// <param name="eventId"></param>
-    /// <param name="listener"></param>
+    #region Add Listener - EventID
+
+    public static void AddListener(EventID eventId, Action listener)
+    {
+        AddListener((int)eventId, listener);
+    }
+
+    public static void AddListener<T>(EventID eventId, Action<T> listener)
+    {
+        AddListener((int)eventId, listener);
+    }
+
+    public static void AddListener<T1, T2>(EventID eventId, Action<T1, T2> listener)
+    {
+        AddListener((int)eventId, listener);
+    }
+
+    public static void AddListener<T1, T2, T3>(EventID eventId, Action<T1, T2, T3> listener)
+    {
+        AddListener((int)eventId, listener);
+    }
+
+    #endregion
+
+    #region Add Listener - int
+
     public static void AddListener(int eventId, Action listener)
     {
-        OnListenerAdding(eventId, listener);
-        m_EventTable[eventId] = (Action)m_EventTable[eventId] + listener;
+        if (!CanAddListener(eventId, listener)) return;
+        eventTable[eventId] = (Action)eventTable[eventId] + listener;
     }
 
-    /// <summary>
-    /// 一个参数事件监听
-    /// </summary>
-    /// <param name="eventId"></param>
-    /// <param name="listener"></param>
     public static void AddListener<T>(int eventId, Action<T> listener)
     {
-        OnListenerAdding(eventId, listener);
-        m_EventTable[eventId] = (Action<T>)m_EventTable[eventId] + listener;
+        if (!CanAddListener(eventId, listener)) return;
+        eventTable[eventId] = (Action<T>)eventTable[eventId] + listener;
     }
 
-    /// <summary>
-    /// 两个参数事件监听
-    /// </summary>
-    /// <param name="eventId"></param>
-    /// <param name="listener"></param>
     public static void AddListener<T1, T2>(int eventId, Action<T1, T2> listener)
     {
-        OnListenerAdding(eventId, listener);
-        m_EventTable[eventId] = (Action<T1, T2>)m_EventTable[eventId] + listener;
+        if (!CanAddListener(eventId, listener)) return;
+        eventTable[eventId] = (Action<T1, T2>)eventTable[eventId] + listener;
     }
-    /// <summary>
-    /// 三个参数事件监听
-    /// </summary>
-    /// <param name="eventId"></param>
-    /// <param name="listener"></param>
-    /// 
+
     public static void AddListener<T1, T2, T3>(int eventId, Action<T1, T2, T3> listener)
     {
-        OnListenerAdding(eventId, listener);
-        m_EventTable[eventId] = (Action<T1, T2, T3>)m_EventTable[eventId] + listener;
+        if (!CanAddListener(eventId, listener)) return;
+        eventTable[eventId] = (Action<T1, T2, T3>)eventTable[eventId] + listener;
     }
+
     #endregion
 
-    #region 移除监听
-    /// <summary>
-    /// 无参数事件移除监听
-    /// </summary>
+    #region Remove Listener - EventID
+
+    public static void RemoveListener(EventID eventId, Action listener)
+    {
+        RemoveListener((int)eventId, listener);
+    }
+
+    public static void RemoveListener<T>(EventID eventId, Action<T> listener)
+    {
+        RemoveListener((int)eventId, listener);
+    }
+
+    public static void RemoveListener<T1, T2>(EventID eventId, Action<T1, T2> listener)
+    {
+        RemoveListener((int)eventId, listener);
+    }
+
+    public static void RemoveListener<T1, T2, T3>(EventID eventId, Action<T1, T2, T3> listener)
+    {
+        RemoveListener((int)eventId, listener);
+    }
+
+    #endregion
+
+    #region Remove Listener - int
+
     public static void RemoveListener(int eventId, Action listener)
     {
-        if(OnListenerRemoving(eventId, listener))
-        {
-            m_EventTable[eventId] = (Action)m_EventTable[eventId] - listener;
-        }
+        if (!CanRemoveListener(eventId, listener)) return;
+        eventTable[eventId] = (Action)eventTable[eventId] - listener;
+        RemoveEventIfEmpty(eventId);
     }
 
-    /// <summary>
-    /// 1个参数事件移除监听
-    /// </summary>
     public static void RemoveListener<T>(int eventId, Action<T> listener)
     {
-        if(OnListenerRemoving(eventId, listener))
-        {
-            m_EventTable[eventId] = (Action<T>)m_EventTable[eventId] - listener;
-        }
+        if (!CanRemoveListener(eventId, listener)) return;
+        eventTable[eventId] = (Action<T>)eventTable[eventId] - listener;
+        RemoveEventIfEmpty(eventId);
     }
 
-    /// <summary>
-    /// 2个参数事件移除监听
-    /// </summary>
     public static void RemoveListener<T1, T2>(int eventId, Action<T1, T2> listener)
     {
-        if(OnListenerRemoving(eventId, listener))
-        {
-            m_EventTable[eventId] = (Action<T1, T2>)m_EventTable[eventId] - listener;
-        }
+        if (!CanRemoveListener(eventId, listener)) return;
+        eventTable[eventId] = (Action<T1, T2>)eventTable[eventId] - listener;
+        RemoveEventIfEmpty(eventId);
     }
 
-    /// <summary>
-    /// 3个参数事件移除监听
-    /// </summary>
     public static void RemoveListener<T1, T2, T3>(int eventId, Action<T1, T2, T3> listener)
     {
-        if(OnListenerRemoving(eventId, listener))
-        {
-            m_EventTable[eventId] = (Action<T1, T2, T3>)m_EventTable[eventId] - listener;
-        }
+        if (!CanRemoveListener(eventId, listener)) return;
+        eventTable[eventId] = (Action<T1, T2, T3>)eventTable[eventId] - listener;
+        RemoveEventIfEmpty(eventId);
     }
-
-
 
     #endregion
 
-    #region 触发事件
+    #region Broadcast - EventID
 
-    /// <summary>
-    /// 无参
-    /// </summary>
-    /// <param name="eventId"></param>
+    public static void Broadcast(EventID eventId)
+    {
+        Broadcast((int)eventId);
+    }
+
+    public static void Broadcast<T>(EventID eventId, T arg)
+    {
+        Broadcast((int)eventId, arg);
+    }
+
+    public static void Broadcast<T1, T2>(EventID eventId, T1 arg1, T2 arg2)
+    {
+        Broadcast((int)eventId, arg1, arg2);
+    }
+
+    public static void Broadcast<T1, T2, T3>(EventID eventId, T1 arg1, T2 arg2, T3 arg3)
+    {
+        Broadcast((int)eventId, arg1, arg2, arg3);
+    }
+
+    #endregion
+
+    #region Broadcast - int
+
     public static void Broadcast(int eventId)
     {
-        if(m_EventTable.TryGetValue(eventId, out var d))
+        if (!eventTable.TryGetValue(eventId, out Delegate handler)) return;
+
+        if (handler is Action action)
         {
-            if(d is Action action) action.Invoke();
-            else Debug.LogError($"[EventManager] 事件 {eventId} 的委托类型不匹配! 现有: {d.GetType()}");
+            action.Invoke();
+        }
+        else
+        {
+            LogTypeMismatch(eventId, typeof(Action), handler.GetType());
         }
     }
 
-    /// <summary>
-    /// 1参
-    /// </summary>
-    /// <param name="eventId"></param>
     public static void Broadcast<T>(int eventId, T arg)
     {
-        if(m_EventTable.TryGetValue(eventId, out var d))
+        if (!eventTable.TryGetValue(eventId, out Delegate handler)) return;
+
+        if (handler is Action<T> action)
         {
-            if(d is Action<T> action) action.Invoke(arg);
-            else Debug.LogError($"[EventManager] 事件 {eventId} 的委托类型不匹配! 现有: {d.GetType()}");
+            action.Invoke(arg);
+        }
+        else
+        {
+            LogTypeMismatch(eventId, typeof(Action<T>), handler.GetType());
         }
     }
 
-    /// <summary>
-    /// 2参
-    /// </summary>
-    /// <param name="eventId"></param>
     public static void Broadcast<T1, T2>(int eventId, T1 arg1, T2 arg2)
     {
-        if(m_EventTable.TryGetValue(eventId, out var d))
+        if (!eventTable.TryGetValue(eventId, out Delegate handler)) return;
+
+        if (handler is Action<T1, T2> action)
         {
-            if(d is Action<T1, T2> action) action.Invoke(arg1, arg2);
-            else Debug.LogError($"[EventManager] 事件 {eventId} 的委托类型不匹配! 现有: {d.GetType()}");
+            action.Invoke(arg1, arg2);
+        }
+        else
+        {
+            LogTypeMismatch(eventId, typeof(Action<T1, T2>), handler.GetType());
         }
     }
 
-    /// <summary>
-    /// 3参
-    /// </summary>
-    /// <param name="eventId"></param>
     public static void Broadcast<T1, T2, T3>(int eventId, T1 arg1, T2 arg2, T3 arg3)
     {
-        if(m_EventTable.TryGetValue(eventId, out var d))
+        if (!eventTable.TryGetValue(eventId, out Delegate handler)) return;
+
+        if (handler is Action<T1, T2, T3> action)
         {
-            if(d is Action<T1, T2, T3> action) action.Invoke(arg1, arg2, arg3);
-            else Debug.LogError($"[EventManager] 事件 {eventId} 的委托类型不匹配! 现有: {d.GetType()}");
+            action.Invoke(arg1, arg2, arg3);
+        }
+        else
+        {
+            LogTypeMismatch(eventId, typeof(Action<T1, T2, T3>), handler.GetType());
         }
     }
 
     #endregion
 
-    #region 内部方法
-
-    //安全校验 防止将不同类型委托加在同一个Key上
-    private static void OnListenerAdding(int eventId, Delegate listenerBegingAdded)
+    #region 辅助方法
+    public static void ClearAll()
     {
-        //新事件 添加
-        if(!m_EventTable.ContainsKey(eventId))
-        {
-            m_EventTable.Add(eventId, null);
-        }
-
-        Delegate d = m_EventTable[eventId];
-
-        if(d != null && d.GetType() != listenerBegingAdded.GetType())
-        {
-            Debug.LogError($"[EventManager] 尝试为事件 {eventId} 添加不同类型的委托! 现有: {d.GetType()}");
-        }
-
+        eventTable.Clear();
     }
 
-    //移除
-    private static bool OnListenerRemoving(int eventId, Delegate listenerBeingRemoved)
+    private static bool CanAddListener(int eventId, Delegate listener)
     {
-        if(m_EventTable.TryGetValue(eventId, out var d))
+        if (listener == null)
         {
-            if(d == null) return false;
-            if(d.GetType() != listenerBeingRemoved.GetType())
-            {
-                Debug.LogError($"[EventManager] 尝试为事件 {eventId} 移除不同类型的委托! 现有: {d.GetType()}");
-                return false;
-            }
+            Debug.LogError($"[EventManager] Cannot add null listener to event {eventId}.");
+            return false;
+        }
+
+        if (!eventTable.TryGetValue(eventId, out Delegate existingHandler))
+        {
+            eventTable.Add(eventId, null);
             return true;
         }
 
-        return false;
+        if (existingHandler != null && existingHandler.GetType() != listener.GetType())
+        {
+            LogTypeMismatch(eventId, listener.GetType(), existingHandler.GetType());
+            return false;
+        }
+
+        return true;
     }
+
+    private static bool CanRemoveListener(int eventId, Delegate listener)
+    {
+        if (listener == null)
+        {
+            Debug.LogError($"[EventManager] Cannot remove null listener from event {eventId}.");
+            return false;
+        }
+
+        if (!eventTable.TryGetValue(eventId, out Delegate existingHandler))
+        {
+            return false;
+        }
+
+        if (existingHandler == null)
+        {
+            return false;
+        }
+
+        if (existingHandler.GetType() != listener.GetType())
+        {
+            LogTypeMismatch(eventId, listener.GetType(), existingHandler.GetType());
+            return false;
+        }
+
+        return true;
+    }
+
+    // 主要是检查 移除某个委托后是否空了
+    private static void RemoveEventIfEmpty(int eventId)
+    {
+        if (eventTable.TryGetValue(eventId, out Delegate handler) && handler == null)
+        {
+            eventTable.Remove(eventId);
+        }
+    }
+
+    private static void LogTypeMismatch(int eventId, Type expectedType, Type actualType)
+    {
+        Debug.LogError($"[EventManager] Event {eventId} delegate type mismatch. Expected: {expectedType}, Actual: {actualType}");
+    }
+
     #endregion
 }

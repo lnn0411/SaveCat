@@ -11,6 +11,9 @@ public abstract class BaseView : MonoBehaviour
 {
     private bool _isInitialized = false;
 
+    //是否需要时时刻刻刷新
+    public bool NeedsUpdate { get; protected set; } = false;
+
     protected virtual void Awake()
     {
         if (!_isInitialized)

@@ -10,6 +10,8 @@ using UnityEditor;
 public class GameRoot : MonoBehaviour
 {
     public LevelConfigSO initialLevelConfig; 
+    private GameObject TopCanvas => GameObject.Find("TopCanvas");
+    private GameObject BottomCanvas => GameObject.Find("BottomCanvas");
 
     private void Start()
     {
@@ -21,7 +23,16 @@ public class GameRoot : MonoBehaviour
         
         // 对象池与数据底层
         coreGroup.AddComponent<PoolManager>();
+        // 格子管理
         coreGroup.AddComponent<GridMapManager>();
+
+        // UI管理
+        coreGroup.AddComponent<UIManager>();
+        // 槽位管理
+        coreGroup.AddComponent<SlotManager>();
+
+        // 打开槽位UI  必须在slotmanager后  因为要调用
+        UIManager.Instance.OpenView("SlotPanel", BottomCanvas.transform);
         
         // 交互与发牌
         BlockManager blockMgr = coreGroup.AddComponent<BlockManager>();
