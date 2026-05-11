@@ -64,7 +64,7 @@ public class DragonManager : Singleton<DragonManager>
         // 获取配置长度
         int segmentCountToSpawn = _dragonColorPool.Count;
 
-        for (int i = 0; i < _config.initialSegmentCount; i++)
+        for (int i = 0; i < segmentCountToSpawn; i++)
         {
             GameObject go = PoolManager.Instance.Get(_config.segmentPrefab, Vector3.zero, Quaternion.identity, this.transform);
             DragonSegmentView view = go.GetComponent<DragonSegmentView>();
@@ -207,6 +207,76 @@ public class DragonManager : Singleton<DragonManager>
 
         //偏移量主要是为了让物体在道路上方 而不是中间
         _catInstance.UpdatePositionAndRoatation(worldPos + Vector3.up * heightOffset, rot); // 确保 CatView 里的方法名拼写正确
+    }
+#endregion
+
+
+#region 龙的反馈
+    private void ApplyRecoil()
+    {
+        if(_config == null) return;
+        //被击打的部分前面会回退一个间隔    被击打的后面由于整个队列变了 i变小 少减少 global变小 抵消
+        _globalTimeT = Mathf.Max(0f, _globalTimeT - _config.spacing);
+        UpdateSegmentsTransform();
+    }
+#endregion
+
+
+#region 对外接口 
+/// <summary>
+/// 根据颜色 找到最前面的存活龙节段
+/// 后续可能要有遮盖层的概念  比如说有些节段被冰冻了  就不能被找到  只能找到前面一个正常的
+/// </summary>
+/// <param name="type"></param>
+/// <param name="segment"></param>
+/// <returns></returns>
+    public bool TryFindFrontMostSegment(BlockType type, out DragonSegmentView segment)
+    {
+        for(int i = 0; i < _activeSegments.Count; i++)
+        {
+            DragonSegmentView current = _activeSegments[i];
+
+            if(current == null) continue;
+
+            if(current.CurrentType == type)
+            {
+                segment = current;
+                return true;
+            }
+        }
+        segment = null;
+        return false;
+    }
+
+    // 尝试命中龙节段 返回是否命中成功
+    // 目前是直接移除 后续可以加特效
+    public bool TryHitSegment(DragonSegmentView segment)
+    {
+        if(segment == null) return false;
+
+        int index = _activeSegments.IndexOf(segment);
+        if(index < 0) return false;
+
+        _activeSegments.RemoveAt(index);
+
+        PoolManager.Instance.Recycle(segment.gameObject);
+
+        //被命中后龙的反馈
+        ApplyRecoil();
+        EventManager.Broadcast(EventID.OnDragonSegmentHit);
+        if(_activeSegments.Count == 0)
+        {
+            _currentState = DragonState.GameOver;
+            Debug.Log("防守胜利！");
+            EventManager.Broadcast(EventID.OnLevelVictory);
+        }
+
+        return true;
+    }
+
+    public bool HasAliveSegment()
+    {
+        return _activeSegments.Count > 0;
     }
 #endregion
 }

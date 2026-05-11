@@ -2,6 +2,8 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Splines;
+using System.Text.RegularExpressions;
+
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -30,6 +32,8 @@ public class GameRoot : MonoBehaviour
         coreGroup.AddComponent<UIManager>();
         // 槽位管理
         coreGroup.AddComponent<SlotManager>();
+        // 匹配管理
+        coreGroup.AddComponent<MatchManager>();
 
         // 打开槽位UI  必须在slotmanager后  因为要调用
         UIManager.Instance.OpenView("SlotPanel", BottomCanvas.transform);
