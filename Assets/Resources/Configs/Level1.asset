@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 967cc363223bf6340baff8839fd00e8d, type: 3}
+  m_Name: Level1
+  m_EditorClassIdentifier: 
+  headPrefab: {fileID: 8435338532996395344, guid: 9d5579dd53d2bf54ba36286dcbda6817, type: 3}
+  tailPrefab: {fileID: 5412479658505239853, guid: ecb00b040b55a934fa990d71b8d6eb78, type: 3}
+  segmentPrefab: {fileID: 4487807854893405464, guid: 60ccf13119678a04982ebe08727ede0e, type: 3}
+  catPrefab: {fileID: 1174905760694234964, guid: 6d6a853963cd08c498d3277f0c02bfa3, type: 3}
+  chaseSpeed: 0.15
+  normalSpeed: 0.05
+  chaseEndThresholdT: 0.35
+  spacing: 0.015
+  initialSegmentCount: 20
+  dragonBodyTypes: 0000000001000000010000000200000002000000020000000400000004000000030000000300000003000000010000000100000000000000000000000200000002000000030000000300000003000000
+  blockPrefab: {fileID: 2007966972340106889, guid: b941bd58b6e77344997c6f1129224672, type: 3}
+  maxWidth: 10
+  maxHeight: 10
+  targetBlockCount: 20
