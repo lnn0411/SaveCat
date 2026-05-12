@@ -48,6 +48,8 @@ public class DragonManager : Singleton<DragonManager>
     private int _recoilAffectedBodyCount; // 当前受击的身体数量
     private float _recoilOffsetT; // 当前视觉回退偏移量
 
+    private bool _isVictory;
+
 
 #endregion
 
@@ -62,6 +64,7 @@ public class DragonManager : Singleton<DragonManager>
         // 龙的颜色池
         _dragonColorPool = dragonBodyTypes;
         _currentState = DragonState.Chasing;
+        _isVictory = false;
 
         if (_config == null || _targetSpline == null)
         {
@@ -173,8 +176,13 @@ public class DragonManager : Singleton<DragonManager>
 
     void Update()
     {
-        if (_activeSegments.Count == 0 || _targetSpline == null || _currentState == DragonState.GameOver) return;
-        if(_activeSegments.Count <= 0) return;
+        if ( _targetSpline == null || _currentState == DragonState.GameOver) return;
+        //获胜了 可能动画没做完 龙头没有归为 因此继续保持 直到状态变了
+        if (_isVictory)
+        {
+            UpdateSegmentsTransform();
+            return;
+        }
 
         float currentSpeed = _config.normalSpeed;
 
@@ -360,6 +368,15 @@ public class DragonManager : Singleton<DragonManager>
             _segmentTimeTs[i] = Mathf.Max(0f, _segmentTimeTs[i] - finalOffset);
         }
         ResetRecoilState();
+
+        //保证获胜后继续更新
+        if(_isVictory)
+        {
+            _isVictory = false;
+            _currentState = DragonState.GameOver;
+            EventManager.Broadcast(EventID.OnLevelVictory);
+            
+        }
         
     }
 
@@ -449,8 +466,7 @@ public class DragonManager : Singleton<DragonManager>
 
         if (_activeSegments.Count <= 0)
         {
-            _currentState = DragonState.GameOver;
-            EventManager.Broadcast(EventID.OnLevelVictory);
+            _isVictory = true;
         }
 
         return true;
