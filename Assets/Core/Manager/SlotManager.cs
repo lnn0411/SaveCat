@@ -168,6 +168,51 @@ public class SlotManager : Singleton<SlotManager>
     }
 
     /// <summary>
+    /// 收集当前所有可用弹药槽位
+    /// </summary>
+    /// <param name="result"></param>
+    /// <returns></returns>
+    public int CollecAvailableAmmoSlots(List<int>result)
+    {
+        if(result == null) return 0;
+        result.Clear();
+
+        for(int i = 0; i < _slots.Count; i++)
+        {
+            SlotData slotData = _slots[i];
+            if(slotData == null) continue;
+            if(!slotData.IsEmpty && slotData.StrengthCount > 0)
+            {
+                result.Add(i);
+            }
+        }
+        return result.Count;
+    }
+
+    /// <summary>
+    /// 获取指定槽位的弹药数据
+    /// </summary>
+    /// <param name="slotIndex"></param>
+    /// <param name="slotData"></param>
+    /// <returns></returns>
+    public bool TryGetAmmoAt(int slotIndex, out SlotData slotData)
+    {
+        if(slotIndex < 0 || slotIndex >= _slots.Count) 
+        {
+            slotData = null;
+            return false;
+        }
+
+        slotData = _slots[slotIndex];
+        if(slotData == null || slotData.IsEmpty || slotData.StrengthCount <= 0)
+        {
+            slotData = null;
+            return false;
+        }
+        return true;
+    }
+
+    /// <summary>
     /// 获取指定槽位对应的UI表现对象
     /// </summary>
     /// <param name="slotIndex"></param>

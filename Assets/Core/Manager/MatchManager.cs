@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -19,6 +20,12 @@ public class MatchManager : Singleton<MatchManager>
 
     private bool _isRunning;
     private float _nextShotTime;
+
+    //缓存当前有弹药的槽位
+    private readonly List<int> _availableSlotIndices = new List<int>();
+
+    //处理过的颜色 防止同一轮攻击中多次处理同一颜色
+    private readonly HashSet<BlockType> _processColors = new HashSet<BlockType>();
 
     #endregion
 
@@ -48,7 +55,7 @@ public class MatchManager : Singleton<MatchManager>
             return;
         }
 
-        bool didShoot = TryProcessOneMatch();
+        bool didShoot = TryProcessVolley();
 
         if (didShoot)
         {
@@ -143,6 +150,70 @@ public class MatchManager : Singleton<MatchManager>
         SlotManager.Instance.TryConsumeAmmoAt(slotIndex);
 
         return true;
+    }
+
+    /// <summary>
+    /// 处理一轮齐射
+    /// 规则：
+    /// 1. 获取所有有弹药的槽位
+    /// 2.每种颜色最多被攻击一次
+    /// 3.同色多个槽位可以索敌到同一个最前目标，但只允许其中一个槽位扣弹药
+    /// 4.成功命中一次 = 1 弹药消耗 1 龙身消失
+    /// </summary>
+    /// <returns></returns>
+    private bool TryProcessVolley()
+    {
+        if(SlotManager.Instance == null || DragonManager.Instance == null)
+        {
+            return false;
+        }
+
+        int ammoCount = SlotManager.Instance.CollecAvailableAmmoSlots(_availableSlotIndices);
+        if (ammoCount <= 0)
+        {
+            return false;
+        }
+        _processColors.Clear();
+        bool didShootAny = false;
+
+        for(int i = 0; i < _availableSlotIndices.Count; i++)
+        {
+            if(!DragonManager.Instance.HasAliveSegment()) break;
+
+            int slotIndex = _availableSlotIndices[i];
+            // 获取槽位弹药数据
+            if (!SlotManager.Instance.TryGetAmmoAt(slotIndex, out SlotData ammoData))
+            {
+                continue;
+            }
+            BlockType color = ammoData.ColorType;
+
+            //这一轮已经处理过这个颜色了
+            if(_processColors.Contains(color))
+            {
+                continue;
+            }
+            //找到目标
+            bool hasTarget = DragonManager.Instance.TryFindFrontMostSegment(
+                color,
+                out DragonSegmentView targetSegment
+            );
+
+            if (!hasTarget || targetSegment == null)
+            {
+                continue;
+            }
+            // 是否成功攻击龙身
+            bool hitSuccess = DragonManager.Instance.TryHitSegment(targetSegment);
+            if(!hitSuccess) continue;
+
+            //本颜色组第一个命中的槽位扣1
+            SlotManager.Instance.TryConsumeAmmoAt(slotIndex);
+            _processColors.Add(color);
+            didShootAny = true;
+        }
+        return didShootAny;
+        
     }
 
     #endregion
