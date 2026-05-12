@@ -17,7 +17,7 @@ MonoBehaviour:
   segmentPrefab: {fileID: 4487807854893405464, guid: 60ccf13119678a04982ebe08727ede0e, type: 3}
   catPrefab: {fileID: 1174905760694234964, guid: 6d6a853963cd08c498d3277f0c02bfa3, type: 3}
   chaseSpeed: 0.15
-  normalSpeed: 0.05
+  normalSpeed: 0.025
   chaseEndThresholdT: 0.35
   spacing: 0.015
   initialSegmentCount: 20

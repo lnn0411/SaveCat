@@ -115,14 +115,14 @@ public class MatchManager : Singleton<MatchManager>
         {
             return false;
         }
-
+        // 是否有弹药
         bool hasAmmo = SlotManager.Instance.TryGetFirstAmmo(out int slotIndex, out SlotData ammoData);
 
         if (!hasAmmo || ammoData == null)
         {
             return false;
         }
-
+        // 是否有目标
         bool hasTarget = DragonManager.Instance.TryFindFrontMostSegment(
             ammoData.ColorType,
             out DragonSegmentView targetSegment
@@ -132,7 +132,7 @@ public class MatchManager : Singleton<MatchManager>
         {
             return false;
         }
-
+        // 尝试攻击
         bool hitSuccess = DragonManager.Instance.TryHitSegment(targetSegment);
 
         if (!hitSuccess)
