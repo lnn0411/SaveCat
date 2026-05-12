@@ -12,7 +12,7 @@ public class MatchManager : Singleton<MatchManager>
 
     [Header("Attack Timing")]
     [SerializeField] private float firstShotDelay = 0.25f;
-    [SerializeField] private float shotInterval = 0.45f;
+    [SerializeField] private float shotInterval = 0.8f;
 
     #endregion
 
