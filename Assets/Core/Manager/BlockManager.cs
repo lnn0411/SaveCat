@@ -15,7 +15,7 @@ public class BlockManager : Singleton<BlockManager>
     [Header("Escape Path Settings")]
     [SerializeField] private float cellSize = 1.0f; //方块的尺寸
     [SerializeField] private float escapeOutsidePadding = 1.5f; //边缘的填充
-    [SerializeField] private float slotEntryZ = 12.0f; // Temporary slot target depth before real UI anchors are connected.
+
 
     private LevelConfigSO _config; //关卡配置数据
 
@@ -107,7 +107,18 @@ public class BlockManager : Singleton<BlockManager>
         }
 
         // 3. 槽位也预定成功后，再生成逃逸路径。
-        Vector3 targetWorldPoint = BuildTemporarySlotTargetWorldPoint(targetSlotIndex);
+        if (!TryBuildSlotTargetWorldPoint(targetSlotIndex, out Vector3 targetWorldPoint))
+        {
+            Debug.LogWarning($"[BlockManager] 无法获取槽位 {targetSlotIndex} 的精准世界坐标，释放预定槽位。");
+
+            if (SlotManager.Instance != null)
+            {
+                SlotManager.Instance.ReleaseReservedSlot(targetSlotIndex);
+            }
+
+            blockView.PlayBlockedFeedback(availableSteps);
+            return;
+        }
 
         bool hasPath = GridMapManager.Instance.TryBuildEscapePath(
             id,
@@ -157,21 +168,40 @@ public class BlockManager : Singleton<BlockManager>
 #endregion
 
 #region 方法工具
-
-    private Vector3 BuildTemporarySlotTargetWorldPoint(int slotIndex)
+    // 坐标转换   UI转屏幕转世界坐标
+    private bool TryBuildSlotTargetWorldPoint(int slotIndex, out Vector3 targetWorldPoint)
     {
-        int slotCount = SlotManager.Instance != null ? Mathf.Max(1, SlotManager.Instance.MaxSlotCount / 2) : 1;
-        // 算出棋盘中心点
-        float boardCenterX = (_config.maxWidth - 1) * cellSize * 0.5f;
-        // 横向间隔 格子之间
-        float slotSpacing = cellSize * 1.0f;
-        // 将原来的索引转为以中心为基准的索引
-        float centeredIndex = slotIndex - (slotCount - 1) * 0.5f;
-        // 棋盘中心加上槽位偏移
-        float x = boardCenterX + centeredIndex * slotSpacing;
+        targetWorldPoint = Vector3.zero;
+        if(SlotManager.Instance == null) return false;
 
-        return new Vector3(x, 0f, slotEntryZ);
+        if(!SlotManager.Instance.TryGetSlotShootAnchor(slotIndex, out RectTransform anchor)) return false;
+        if(bottomCamera == null) return false;
+        //获取对应的canvas
+        Canvas canvas = anchor.GetComponentInParent<Canvas>();
+        Camera uiCamera = null;
+        if (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+        {
+            // 说明依赖相机渲染
+            uiCamera = canvas.worldCamera != null ? canvas.worldCamera : bottomCamera;
+        }
+        //转为屏幕坐标
+        Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(uiCamera, anchor.position);
+        // 从屏幕坐标发射一条射线
+        Ray ray = bottomCamera.ScreenPointToRay(screenPoint);
+
+        Plane boardPlane = new Plane(Vector3.up, Vector3.zero);
+
+        if (!boardPlane.Raycast(ray, out float enter))
+        {
+            return false;
+        }
+
+        targetWorldPoint = ray.GetPoint(enter);
+        targetWorldPoint.y = 0f;
+
+        return true;
     }
+
 
     // 逆向推演法：最先放入的方块 一定是最后逃逸的，所以我们从后往前放，直到放满指定数量的方块或者没有合适的位置了
     // 后面放的方块，它的逃逸路线不会被之前存在的方块阻挡即可
@@ -249,55 +279,4 @@ public class BlockManager : Singleton<BlockManager>
     }
 #endregion
 
-
-#if UNITY_EDITOR
-private void OnDrawGizmos()
-{
-    const int columns = 4;
-
-    int boardWidth = _config != null ? _config.maxWidth : 10;
-    int slotCount = SlotManager.Instance != null
-        ? Mathf.Max(1, SlotManager.Instance.MaxSlotCount)
-        : 8;
-
-    float boardCenterX = (boardWidth - 1) * cellSize * 0.5f;
-
-    float columnSpacing = cellSize * 1.3f;
-    float rowSpacing = cellSize * 0.9f;
-
-    float totalWidth = (columns - 1) * columnSpacing;
-
-    int rowCount = Mathf.CeilToInt(slotCount / (float)columns);
-
-    for (int row = 0; row < rowCount; row++)
-    {
-        float z = slotEntryZ - row * rowSpacing;
-
-        float lineStartX = boardCenterX - totalWidth * 0.5f;
-        float lineEndX = boardCenterX + totalWidth * 0.5f;
-
-        Gizmos.color = Color.cyan;
-        Gizmos.DrawLine(
-            new Vector3(lineStartX, 0.05f, z),
-            new Vector3(lineEndX, 0.05f, z)
-        );
-    }
-
-    for (int i = 0; i < slotCount; i++)
-    {
-        int column = i % columns;
-        int row = i / columns;
-
-        float x = boardCenterX - totalWidth * 0.5f + column * columnSpacing;
-        float z = slotEntryZ - row * rowSpacing;
-
-        Vector3 point = new Vector3(x, 0.08f, z);
-
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawSphere(point, 0.12f);
-
-        UnityEditor.Handles.Label(point + Vector3.up * 0.25f, $"Slot {i}");
-    }
-}
-#endif
 }

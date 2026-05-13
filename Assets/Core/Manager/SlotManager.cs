@@ -365,7 +365,28 @@ public class SlotManager : Singleton<SlotManager>
 
 #endregion
 
+#region 槽位相关
+    public bool TryGetSlotShootAnchor(int slotIndex, out RectTransform anchor)
+    {
+        anchor = null;
 
+        if (slotIndex < 0 || slotIndex >= _slotViews.Count)
+        {
+            return false;
+        }
+
+        SlotItemView slotView = _slotViews[slotIndex];
+
+        if (slotView == null)
+        {
+            return false;
+        }
+
+        anchor = slotView.GetShootAnchor();
+
+        return anchor != null;
+    }
+#endregion
 #region  刷新逻辑
 
     /// <summary>
