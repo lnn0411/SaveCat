@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 
 
@@ -108,6 +109,82 @@ public class GridMapManager : Singleton<GridMapManager>
     }
 
     /// <summary>
+    /// 生成外环路线
+    /// </summary>
+    /// <param name="blockId">方块ID</param>
+    /// <param name="targetWorldPoint">目标投影点</param>
+    /// <param name="outsidePadding">距离棋盘有多远</param>
+    /// <param name="cellSize">方块大小</param>
+    /// <param name="pathPoints">路径点</param>
+    /// <returns></returns>
+    public bool TryBuildEscapePath(
+        int blockId,
+        Vector3 targetWorldPoint,
+        float outsidePadding,
+        float cellSize,
+        out Vector3[] pathPoints)
+    {
+        pathPoints = null;
+        //通过ID取到对应的方块数据
+        if (!allBlocksData.TryGetValue(blockId, out BlockData block))
+        {
+            Debug.LogError($"[GridMapManager] Block with ID {blockId} not found when building escape path.");
+            return false;
+        }
+        // 是否可以逃脱
+        if (!CanBlockEscape(blockId, out _))
+        {
+            return false;
+        }
+        // 四条边生成
+        GetOuterRingBounds(
+            cellSize,
+            outsidePadding,
+            out float leftLaneX,
+            out float rightLaneX,
+            out float bottomLaneZ,
+            out float topLaneZ
+        );
+        //将方块本身方向转换为逃跑路线方向
+        EscapeLane startLane = GetEscapeLane(block.Dir);
+        // 外围的起始点坐标 棋盘逃逸的终点
+        Vector3 startPoint = GetLaneStartPoint(block, startLane, cellSize, leftLaneX, rightLaneX, bottomLaneZ, topLaneZ);
+        //获得外围的终极坐标targetOnRing 方块的目标点 以及它落在哪条车道上
+        EscapeLane targetLane = ProjectToClosestLane(
+            targetWorldPoint,
+            leftLaneX,
+            rightLaneX,
+            bottomLaneZ,
+            topLaneZ,
+            out Vector3 targetOnRing
+        );
+
+        // 顺时针路径和逆时针路径
+        List<Vector3> clockwisePath = BuildRingPath(startPoint, startLane, targetOnRing, targetLane, 1, leftLaneX, rightLaneX, bottomLaneZ, topLaneZ);
+        List<Vector3> counterPath = BuildRingPath(startPoint, startLane, targetOnRing, targetLane, -1, leftLaneX, rightLaneX, bottomLaneZ, topLaneZ);
+
+        // 找到哪个方向最近
+        float clockwiseDistance = GetPathDistance(clockwisePath);
+        float counterDistance = GetPathDistance(counterPath);
+        // 选择了最近的路径
+        List<Vector3> selectedPath = SelectShorterRingPath(clockwisePath, clockwiseDistance, counterPath, counterDistance, rightLaneX);
+        // 去除相邻的点
+        RemoveAdjacentDuplicates(selectedPath);
+        // 非法路径报错
+        for (int i = 0; i < selectedPath.Count; i++)
+        {
+            if (!IsOutsideBoard(selectedPath[i], cellSize))
+            {
+                Debug.LogWarning($"[GridMapManager] Escape path point {selectedPath[i]} is inside the board.");
+                return false;
+            }
+        }
+
+        pathPoints = selectedPath.ToArray();
+        return pathPoints.Length > 0;
+    }
+
+    /// <summary>
     /// 方块逃逸后 要从地图数据中移除该方块的占位信息
     /// </summary>
     /// <param name="blockId"></param>
@@ -173,6 +250,238 @@ public class GridMapManager : Singleton<GridMapManager>
             Direction.Right => new Vector2Int(1, 0),
             _ => Vector2Int.zero
         };
+    }
+
+    //生成对应路线
+    private void GetOuterRingBounds(float cellSize,float outsidePadding,out float leftLaneX,out float rightLaneX,out float bottomLaneZ,out float topLaneZ)
+    {
+        // 地图x最小值
+        float boardMinX = 0f;
+        // 地图x最大值
+        float boardMaxX = (width - 1) * cellSize;
+        // 地图Z最小值
+        float boardMinZ = 0f;
+        // 地图Z最大值
+        float boardMaxZ = (height - 1) * cellSize;
+        // 在四个点的基础上 往外扩展outsidePadding的距离 就得到了外环的四条边界线坐标
+        leftLaneX = boardMinX - outsidePadding;
+        rightLaneX = boardMaxX + outsidePadding;
+        bottomLaneZ = boardMinZ - outsidePadding;
+        topLaneZ = boardMaxZ + outsidePadding;
+    }
+
+    // 方向转换成逃逸跑道
+    private EscapeLane GetEscapeLane(Direction direction)
+    {
+        switch (direction)
+        {
+            case Direction.Up:
+                return EscapeLane.Top;
+            case Direction.Down:
+                return EscapeLane.Bottom;
+            case Direction.Left:
+                return EscapeLane.Left;
+            case Direction.Right:
+                return EscapeLane.Right;
+            default:
+                return EscapeLane.Bottom;
+        }
+    }
+
+
+    /// <summary>
+    /// 获取起始点坐标
+    /// </summary>
+    /// <param name="block">方块数据</param>
+    /// <param name="lane">逃跑路线</param>
+    /// <param name="cellSize">格子大小</param>
+    /// <param name="leftLaneX">左车道X坐标</param>
+    /// <param name="rightLaneX">右车道X坐标</param>
+    /// <param name="bottomLaneZ">底车道Z坐标</param>
+    /// <param name="topLaneZ">顶车道Z坐标</param>
+    /// <returns></returns>
+    private Vector3 GetLaneStartPoint(BlockData block,EscapeLane lane,float cellSize,float leftLaneX,float rightLaneX,float bottomLaneZ,float topLaneZ)
+    {   
+        //获得逃逸起始点
+        Vector2Int headCell = block.GetHeadPosition();
+        float x = headCell.x * cellSize;
+        float z = headCell.y * cellSize;
+        // 根据逃跑路线选择起始点
+        switch (lane)
+        {
+            case EscapeLane.Top:
+                return new Vector3(x, 0f, topLaneZ);
+            case EscapeLane.Bottom:
+                return new Vector3(x, 0f, bottomLaneZ);
+            case EscapeLane.Left:
+                return new Vector3(leftLaneX, 0f, z);
+            case EscapeLane.Right:
+                return new Vector3(rightLaneX, 0f, z);
+            default:
+                return new Vector3(x, 0f, bottomLaneZ);
+        }
+    }
+
+    // 近似计算目标点在外环上的投影点，并判断落在哪条车道上
+    private EscapeLane ProjectToClosestLane(Vector3 targetWorldPoint,float leftLaneX,float rightLaneX,float bottomLaneZ,float topLaneZ,out Vector3 pointOnRing)
+    {
+        // 计算出当前目标点距离外环的各边的距离
+        float leftDistance = Mathf.Abs(targetWorldPoint.x - leftLaneX);
+        float rightDistance = Mathf.Abs(targetWorldPoint.x - rightLaneX);
+        float bottomDistance = Mathf.Abs(targetWorldPoint.z - bottomLaneZ);
+        float topDistance = Mathf.Abs(targetWorldPoint.z - topLaneZ);
+
+        EscapeLane lane = EscapeLane.Bottom;
+        float bestDistance = bottomDistance;
+        // 比较得到最近的path
+        if (topDistance < bestDistance)
+        {
+            lane = EscapeLane.Top;
+            bestDistance = topDistance;
+        }
+        if (leftDistance < bestDistance)
+        {
+            lane = EscapeLane.Left;
+            bestDistance = leftDistance;
+        }
+        if (rightDistance < bestDistance)
+        {
+            lane = EscapeLane.Right;
+        }
+        // 以Top为例 如果x在范围之内，则保留对应的x       y为Top跑道的值
+        switch (lane)
+        {
+            case EscapeLane.Top:
+                pointOnRing = new Vector3(Mathf.Clamp(targetWorldPoint.x, leftLaneX, rightLaneX), 0f, topLaneZ);
+                break;
+            case EscapeLane.Bottom:
+                pointOnRing = new Vector3(Mathf.Clamp(targetWorldPoint.x, leftLaneX, rightLaneX), 0f, bottomLaneZ);
+                break;
+            case EscapeLane.Left:
+                pointOnRing = new Vector3(leftLaneX, 0f, Mathf.Clamp(targetWorldPoint.z, bottomLaneZ, topLaneZ));
+                break;
+            case EscapeLane.Right:
+                pointOnRing = new Vector3(rightLaneX, 0f, Mathf.Clamp(targetWorldPoint.z, bottomLaneZ, topLaneZ));
+                break;
+            default:
+                pointOnRing = targetWorldPoint;
+                break;
+        }
+
+        return lane;
+    }
+
+    // 计算路径 不停的找到拐弯处
+    private List<Vector3> BuildRingPath(Vector3 startPoint,EscapeLane startLane,Vector3 targetPoint,EscapeLane targetLane,
+        int step,float leftLaneX,float rightLaneX,float bottomLaneZ,float topLaneZ)
+    {
+        // 棋盘的出口算第一个路径点
+        List<Vector3> points = new List<Vector3>();
+        points.Add(startPoint);
+
+        EscapeLane currentLane = startLane;
+        //跑到目标车道
+        while (currentLane != targetLane)
+        {
+            EscapeLane nextLane = GetNextLane(currentLane, step);
+            points.Add(GetCornerPoint(currentLane, nextLane, leftLaneX, rightLaneX, bottomLaneZ, topLaneZ));
+            currentLane = nextLane;
+        }
+
+        points.Add(targetPoint);
+        return points;
+    }
+    // 找到下一条跑道
+    private EscapeLane GetNextLane(EscapeLane lane, int step)
+    {
+        int next = ((int)lane + step + 4) % 4;
+        return (EscapeLane)next;
+    }
+
+    // 获取两个跑道中的拐角处位置
+    private Vector3 GetCornerPoint(EscapeLane from,EscapeLane to,float leftLaneX,float rightLaneX,float bottomLaneZ,float topLaneZ)
+    {
+        if (IsLanePair(from, to, EscapeLane.Top, EscapeLane.Right))
+        {
+            return new Vector3(rightLaneX, 0f, topLaneZ);
+        }
+        if (IsLanePair(from, to, EscapeLane.Right, EscapeLane.Bottom))
+        {
+            return new Vector3(rightLaneX, 0f, bottomLaneZ);
+        }
+        if (IsLanePair(from, to, EscapeLane.Bottom, EscapeLane.Left))
+        {
+            return new Vector3(leftLaneX, 0f, bottomLaneZ);
+        }
+        if (IsLanePair(from, to, EscapeLane.Left, EscapeLane.Top))
+        {
+            return new Vector3(leftLaneX, 0f, topLaneZ);
+        }
+
+        return Vector3.zero;
+    }
+
+    private bool IsLanePair(EscapeLane a, EscapeLane b, EscapeLane first, EscapeLane second)
+    {
+        return (a == first && b == second) || (a == second && b == first);
+    }
+
+    // 获得路径的距离
+    private float GetPathDistance(List<Vector3> points)
+    {
+        float distance = 0f;
+        for (int i = 1; i < points.Count; i++)
+        {
+            distance += Vector3.Distance(points[i - 1], points[i]);
+        }
+        return distance;
+    }
+
+    // 选一条最短的路径 如果两条路径长度相同 则优先选那个经过右车道的（因为视觉上更贴近玩家）
+    private List<Vector3> SelectShorterRingPath(List<Vector3> clockwisePath,float clockwiseDistance,List<Vector3> counterPath,
+        float counterDistance,float rightLaneX)
+    {
+        if (Mathf.Abs(clockwiseDistance - counterDistance) <= 0.001f)
+        {
+            return PathTouchesRightLane(counterPath, rightLaneX) ? counterPath : clockwisePath;
+        }
+
+        return clockwiseDistance < counterDistance ? clockwisePath : counterPath;
+    }
+
+    private bool PathTouchesRightLane(List<Vector3> path, float rightLaneX)
+    {
+        for (int i = 0; i < path.Count; i++)
+        {
+            if (Mathf.Abs(path[i].x - rightLaneX) <= 0.001f)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // 去除相邻的点
+    private void RemoveAdjacentDuplicates(List<Vector3> points)
+    {
+        for (int i = points.Count - 1; i > 0; i--)
+        {
+            if ((points[i] - points[i - 1]).sqrMagnitude <= 0.0001f)
+            {
+                points.RemoveAt(i);
+            }
+        }
+    }
+
+    // 是否在棋盘内
+    private bool IsOutsideBoard(Vector3 point, float cellSize)
+    {
+        float boardMinX = 0f;
+        float boardMaxX = (width - 1) * cellSize;
+        float boardMinZ = 0f;
+        float boardMaxZ = (height - 1) * cellSize;
+
+        return point.x < boardMinX || point.x > boardMaxX || point.z < boardMinZ || point.z > boardMaxZ;
     }
     #endregion
 

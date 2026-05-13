@@ -1,6 +1,7 @@
 using UnityEngine;
 using DG.Tweening;
 using UnityEngine.UIElements;
+using System;
 
 
 /// <summary>
@@ -151,6 +152,60 @@ public class BlockView : MonoBehaviour
         seq.onComplete += () => {
             Debug.Log($"Block {Data.Id} has completed escape animation!");
             //动画结束后回调上层 让它处理回收和能量增加
+            onComplete?.Invoke();
+        };
+    }
+
+    /// <summary>
+    /// 按多端路径播放逃逸动画
+    /// 先离开棋盘，再沿边缘转向槽位的路线
+    /// </summary>
+    /// <param name="pathPoints"></param>
+    /// <param name="onComplete"></param>
+    public void PlayEscapePathAnimation(Vector3[] pathPoints, Action onComplete)
+    {
+        if(pathPoints == null || pathPoints.Length == 0)
+        {
+            //如果槽位为空 用旧的
+            PlayEscapeAnimation(transform.position + transform.forward * 20f, onComplete);
+            return;
+        }
+
+        if(boxCollider != null) boxCollider.enabled = false;
+
+        transform.DOKill();
+        Debug.Log($"Block {Data.Id} is escaping along path. Point count = {pathPoints.Length}");
+        Sequence seq = DOTween.Sequence();
+        Vector3 currentPoint = transform.position;
+        // 移动速度
+        const float moveSpeed = 8f;
+        // 转向的时间
+        const float turnDuration = 0.08f;
+
+        for (int i = 0; i < pathPoints.Length; i++)
+        {
+            Vector3 nextPoint = pathPoints[i];
+            
+            Vector3 moveVector = nextPoint - currentPoint;
+            moveVector.y = 0f;
+
+            if (moveVector.sqrMagnitude <= 0.0001f)
+            {
+                currentPoint = nextPoint;
+                continue;
+            }
+            // 逃逸前要看向终点
+            Quaternion targetRotation = Quaternion.LookRotation(moveVector.normalized, Vector3.up);
+            float moveDuration = Mathf.Max(0.08f, Vector3.Distance(currentPoint, nextPoint) / moveSpeed);
+
+            seq.Append(transform.DORotateQuaternion(targetRotation, turnDuration).SetEase(Ease.OutSine));
+            seq.Append(transform.DOMove(nextPoint, moveDuration).SetEase(Ease.Linear));
+
+            currentPoint = nextPoint;
+        }
+        seq.onComplete += () =>
+        {
+            Debug.Log($"Block {Data.Id} has completed escape path animation!");
             onComplete?.Invoke();
         };
     }

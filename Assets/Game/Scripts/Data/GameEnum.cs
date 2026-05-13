@@ -69,3 +69,12 @@ public enum GmaeFailReason
     None,
     DragonReachedCat
 }
+
+//逃逸路线的四条车道
+public enum EscapeLane
+{
+    Top = 0,
+    Right = 1,
+    Bottom = 2,
+    Left = 3
+}

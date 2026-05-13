@@ -12,6 +12,11 @@ public class BlockManager : Singleton<BlockManager>
     public Camera bottomCamera; //下方摄像机
     public LayerMask blockLayerMask; //方块所在的Layer
 
+    [Header("Escape Path Settings")]
+    [SerializeField] private float cellSize = 1.0f; //方块的尺寸
+    [SerializeField] private float escapeOutsidePadding = 1.5f; //边缘的填充
+    [SerializeField] private float slotEntryZ = 12.0f; // Temporary slot target depth before real UI anchors are connected.
+
     private LevelConfigSO _config; //关卡配置数据
 
     private List<BlockType> _colorPool; //颜色池（1:1的目标方块数量和颜色）
@@ -74,40 +79,99 @@ public class BlockManager : Singleton<BlockManager>
     //处理方块被点击时的逻辑
     private void ProcessBlockEscapeRequest(BlockView blockView)
     {
-        int id = blockView.Data.Id;
-
-        //槽位满了则触发槽位满反馈
-        if(SlotManager.Instance != null && !SlotManager.Instance.HasFreeSlot())
+        if (blockView == null || blockView.Data == null)
         {
-            Debug.Log($"[BlockManager] 槽位已满，方块 {id} 暂时不能逃逸");
-            EventManager.Broadcast(EventID.OnSlotFull);
-            blockView.PlaySlotFullFeedback();
             return;
         }
-        //询问数据层 是否可以逃脱
-        if(GridMapManager.Instance.CanBlockEscape(id, out int availableSteps))
-        {
-            // 抹除展位
-            GridMapManager.Instance.RemoveBlockFromMap(id);
 
-            //调用出界动画 并且委托在飞出屏幕后销毁与UI里面能量增加
-            blockView.PlayEscapeAnimation(blockView.transform.position + blockView.transform.forward * 20f,() =>
-            {
-                // 调用事件 当前方块逃脱成功了，回收这个方块对象，增加能量
-                EventManager.Broadcast(EventID.OnBlockEscapeSuccess, blockView.Data);
-                PoolManager.Instance.Recycle(blockView.gameObject);
-            });
-        }
-        else
-        {
+        int id = blockView.Data.Id;
 
+        // 是否可以逃逸
+        if (!GridMapManager.Instance.CanBlockEscape(id, out int availableSteps))
+        {
             blockView.PlayBlockedFeedback(availableSteps);
+            return;
         }
+
+        // 方块确认可以逃逸后，再尝试预定槽位。
+        int targetSlotIndex = -1;
+
+        if (SlotManager.Instance != null && !SlotManager.Instance.TryReserveFirstEmptySlot(out targetSlotIndex))
+        {
+            Debug.Log($"[BlockManager] 槽位已满，方块 {id} 暂时不能逃逸");
+
+            EventManager.Broadcast(EventID.OnSlotFull);
+            blockView.PlaySlotFullFeedback();
+
+            return;
+        }
+
+        // 3. 槽位也预定成功后，再生成逃逸路径。
+        Vector3 targetWorldPoint = BuildTemporarySlotTargetWorldPoint(targetSlotIndex);
+
+        bool hasPath = GridMapManager.Instance.TryBuildEscapePath(
+            id,
+            targetWorldPoint,
+            escapeOutsidePadding,
+            cellSize,
+            out Vector3[] pathPoints
+        );
+
+        // 4. 如果路径生成失败，必须释放刚刚预定的槽位。
+        if (!hasPath)
+        {
+            Debug.LogWarning($"[BlockManager] 方块 {id} 路径生成失败，释放预定槽位 {targetSlotIndex}");
+
+            if (SlotManager.Instance != null)
+            {
+                SlotManager.Instance.ReleaseReservedSlot(targetSlotIndex);
+            }
+
+            // 阻挡反馈
+            blockView.PlayBlockedFeedback(availableSteps);
+
+            return;
+        }
+
+        // 5. 到这里才可以从棋盘数据中移除。
+        GridMapManager.Instance.RemoveBlockFromMap(id);
+
+        blockView.PlayEscapePathAnimation(
+            pathPoints,
+            () =>
+            {
+                if (SlotManager.Instance != null)
+                {
+                    SlotManager.Instance.TryLoadReservedSlot(
+                        targetSlotIndex,
+                        blockView.Data.Type,
+                        blockView.Data.Length
+                    );
+                }
+
+                PoolManager.Instance.Recycle(blockView.gameObject);
+            }
+        );
     }
 
 #endregion
 
 #region 方法工具
+
+    private Vector3 BuildTemporarySlotTargetWorldPoint(int slotIndex)
+    {
+        int slotCount = SlotManager.Instance != null ? Mathf.Max(1, SlotManager.Instance.MaxSlotCount / 2) : 1;
+        // 算出棋盘中心点
+        float boardCenterX = (_config.maxWidth - 1) * cellSize * 0.5f;
+        // 横向间隔 格子之间
+        float slotSpacing = cellSize * 1.0f;
+        // 将原来的索引转为以中心为基准的索引
+        float centeredIndex = slotIndex - (slotCount - 1) * 0.5f;
+        // 棋盘中心加上槽位偏移
+        float x = boardCenterX + centeredIndex * slotSpacing;
+
+        return new Vector3(x, 0f, slotEntryZ);
+    }
 
     // 逆向推演法：最先放入的方块 一定是最后逃逸的，所以我们从后往前放，直到放满指定数量的方块或者没有合适的位置了
     // 后面放的方块，它的逃逸路线不会被之前存在的方块阻挡即可
@@ -125,7 +189,7 @@ public class BlockManager : Singleton<BlockManager>
             // 从颜色池中获取颜色 先生成targetCount个方块的颜色，保证数量和颜色的1:1关系 后续长度数值可以由算法随机生成
             BlockType assignedType = _colorPool[currentCount];
             Direction randomDir = (Direction)Random.Range(0, 4);
-            int randomLength = Random.Range(1,4);
+            int randomLength = Random.Range(2,5);
             int randomX = Random.Range(0, mapWidth);
             int randomY = Random.Range(0, mapHeight);
             int testId = startBlockIdCounter;
@@ -184,4 +248,56 @@ public class BlockManager : Singleton<BlockManager>
         }
     }
 #endregion
+
+
+#if UNITY_EDITOR
+private void OnDrawGizmos()
+{
+    const int columns = 4;
+
+    int boardWidth = _config != null ? _config.maxWidth : 10;
+    int slotCount = SlotManager.Instance != null
+        ? Mathf.Max(1, SlotManager.Instance.MaxSlotCount)
+        : 8;
+
+    float boardCenterX = (boardWidth - 1) * cellSize * 0.5f;
+
+    float columnSpacing = cellSize * 1.3f;
+    float rowSpacing = cellSize * 0.9f;
+
+    float totalWidth = (columns - 1) * columnSpacing;
+
+    int rowCount = Mathf.CeilToInt(slotCount / (float)columns);
+
+    for (int row = 0; row < rowCount; row++)
+    {
+        float z = slotEntryZ - row * rowSpacing;
+
+        float lineStartX = boardCenterX - totalWidth * 0.5f;
+        float lineEndX = boardCenterX + totalWidth * 0.5f;
+
+        Gizmos.color = Color.cyan;
+        Gizmos.DrawLine(
+            new Vector3(lineStartX, 0.05f, z),
+            new Vector3(lineEndX, 0.05f, z)
+        );
+    }
+
+    for (int i = 0; i < slotCount; i++)
+    {
+        int column = i % columns;
+        int row = i / columns;
+
+        float x = boardCenterX - totalWidth * 0.5f + column * columnSpacing;
+        float z = slotEntryZ - row * rowSpacing;
+
+        Vector3 point = new Vector3(x, 0.08f, z);
+
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawSphere(point, 0.12f);
+
+        UnityEditor.Handles.Label(point + Vector3.up * 0.25f, $"Slot {i}");
+    }
+}
+#endif
 }

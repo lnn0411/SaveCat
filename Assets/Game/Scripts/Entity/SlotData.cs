@@ -7,6 +7,8 @@ public class SlotData
 {
     public bool IsEmpty = true;
 
+    public bool IsReserved = false; //是否被预定了 预定了就不能再放入了 直到发射了才清除预定状态
+
     //当前拥有的颜色
     public BlockType ColorType;
 
@@ -16,6 +18,7 @@ public class SlotData
     public void Clear()
     {
         IsEmpty = true;
+        IsReserved = false;
         StrengthCount = 0;
         ColorType = BlockType.None;
     }
@@ -24,8 +27,16 @@ public class SlotData
     public void Load(BlockType color, int amount)
     {
         IsEmpty = false;
+        IsReserved = false;
         ColorType = color;
         StrengthCount = amount;
-        //可以有特效
+    }
+    // 预定
+    public void Reserve()
+    {
+        IsEmpty = true;
+        IsReserved = true;
+        StrengthCount = 0;
+        ColorType = BlockType.None;
     }
 }

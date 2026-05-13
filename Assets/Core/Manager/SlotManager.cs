@@ -148,6 +148,37 @@ public class SlotManager : Singleton<SlotManager>
         EventManager.Broadcast(EventID.OnBlockSlotted);
         return true;
     }
+    // 写入预定的槽位
+    public bool TryLoadReservedSlot(int slotIndex, BlockType colorType, int strengthCount)
+    {
+        if (slotIndex < 0 || slotIndex >= _slots.Count)
+        {
+            return false;
+        }
+
+        SlotData slot = _slots[slotIndex];
+
+        if (slot == null || !slot.IsReserved)
+        {
+            Debug.LogWarning($"[SlotManager] 尝试写入未预定槽位：{slotIndex}");
+            return false;
+        }
+
+        if (colorType == BlockType.None || strengthCount <= 0)
+        {
+            Debug.LogWarning($"[SlotManager] 尝试写入无效弹药：颜色={colorType}, 威力={strengthCount}");
+            slot.Clear();
+            RefreshSlotView(slotIndex);
+            return false;
+        }
+
+        slot.Load(colorType, strengthCount);
+        RefreshSlotView(slotIndex);
+
+        EventManager.Broadcast(EventID.OnBlockSlotted);
+
+        return true;
+    }
 
     // 获取第一顺位弹药
     public bool TryGetFirstAmmo(out int slotIndex, out SlotData slotData)
@@ -207,6 +238,21 @@ public class SlotManager : Singleton<SlotManager>
             }
         }
         return result.Count;
+    }
+    // 找到第一个空槽位并预定它（暂时占用，防止被后续的方块抢占）
+    public bool TryReserveFirstEmptySlot(out int slotIndex)
+    {
+        slotIndex = FindFirstEmptySlotIndex();
+
+        if (slotIndex < 0)
+        {
+            return false;
+        }
+
+        _slots[slotIndex].Reserve();
+        RefreshSlotView(slotIndex);
+
+        return true;
     }
 
     /// <summary>
@@ -289,12 +335,32 @@ public class SlotManager : Singleton<SlotManager>
     {
         for(int i = 0; i < _slots.Count; i++)
         {
-            if(_slots[i].IsEmpty)
+            //空槽 且未被预定
+            if(_slots[i].IsEmpty && !_slots[i].IsReserved)
             {
                 return i;
             }
         }
         return -1;
+    }
+
+    // 释放对应的预定槽位
+    public void ReleaseReservedSlot(int slotIndex)
+    {
+        if (slotIndex < 0 || slotIndex >= _slots.Count)
+        {
+            return;
+        }
+
+        SlotData slot = _slots[slotIndex];
+
+        if (slot == null || !slot.IsReserved)
+        {
+            return;
+        }
+
+        slot.Clear();
+        RefreshSlotView(slotIndex);
     }
 
 #endregion
