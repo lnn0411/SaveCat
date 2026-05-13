@@ -174,7 +174,6 @@ public class BlockView : MonoBehaviour
         if(boxCollider != null) boxCollider.enabled = false;
 
         transform.DOKill();
-        Debug.Log($"Block {Data.Id} is escaping along path. Point count = {pathPoints.Length}");
         Sequence seq = DOTween.Sequence();
         Vector3 currentPoint = transform.position;
         // 移动速度
@@ -205,7 +204,6 @@ public class BlockView : MonoBehaviour
         }
         seq.onComplete += () =>
         {
-            Debug.Log($"Block {Data.Id} has completed escape path animation!");
             onComplete?.Invoke();
         };
     }

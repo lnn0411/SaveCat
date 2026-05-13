@@ -70,7 +70,6 @@ public class BlockManager : Singleton<BlockManager>
             BlockView clickedBlock = hit.collider.GetComponent<BlockView>();
             if(clickedBlock != null)
             {
-                Debug.Log($"Clicked on Block {clickedBlock.Data.Id}");
                 ProcessBlockEscapeRequest(clickedBlock);
             }
         }
