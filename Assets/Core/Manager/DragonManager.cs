@@ -458,7 +458,10 @@ public class DragonManager : Singleton<DragonManager>
             _segmentTimeTs.RemoveAt(hitIndex);
         }
 
-        PoolManager.Instance.Recycle(segment.gameObject);
+        segment.PlayBreakAndRecycle(() =>
+        {
+            PoolManager.Instance.Recycle(segment.gameObject);
+        });
 
         BeginLocalRecoil(hitIndex);
 

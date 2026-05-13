@@ -129,3 +129,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _renderer: {fileID: 8727915781996076364}
+  breakPrefab: {fileID: 2847073393617507750, guid: 0668b86acf9a51d4cbd26d09a969e39e, type: 3}
+  breakLifeTime: 1.2
+  explosionForce: 3
+  upwardForce: 0.8
+  torqueForce: 4

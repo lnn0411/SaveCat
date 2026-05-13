@@ -1,4 +1,4 @@
-
+using System;
 using UnityEngine;
 
 
@@ -10,6 +10,13 @@ public class DragonSegmentView:DragonBaseView
 
     [SerializeField] private MeshRenderer _renderer;
     private static MaterialPropertyBlock _mpb;
+
+    [Header("Break Effect")]
+    [SerializeField] private GameObject breakPrefab; // 拖 DragonSegmentSplice
+    [SerializeField] private float breakLifeTime = 1.2f;
+    [SerializeField] private float explosionForce = 0.05f;
+    [SerializeField] private float upwardForce = 0.01f;
+    [SerializeField] private float torqueForce = 4f;
 
     // 生成时的初始化
     public void InitializeData(BlockType type)
@@ -53,4 +60,81 @@ public class DragonSegmentView:DragonBaseView
         transform.rotation = rotation;
     }
 
+    #region 破碎特效
+
+    // 外界调用的
+    public void PlayBreakAndRecycle(Action recycleRoot)
+    {
+        if (breakPrefab != null)
+        {
+            // 当前位置实例化出来，并设置颜色 位置和旋转用当前龙身体的位置和旋转
+            GameObject breakObj = Instantiate(
+                breakPrefab,
+                transform.position,
+                transform.rotation
+            );
+            // 世界缩放
+            breakObj.transform.localScale = transform.lossyScale;
+            // 碎片颜色设置成当前身体颜色
+            ApplyCurrentColorToFragments(breakObj);
+            // 施加力
+            ExplodeFragments(breakObj);
+
+            Destroy(breakObj, breakLifeTime);
+        }
+
+        recycleRoot?.Invoke();
+    }
+
+    private void ExplodeFragments(GameObject breakObj)
+    {   
+        // 记录爆炸中心和每个碎片的刚体
+        Vector3 center = transform.position;
+        Rigidbody[] bodies = breakObj.GetComponentsInChildren<Rigidbody>(true);
+
+        foreach (Rigidbody rb in bodies)
+        {
+            rb.gameObject.SetActive(true);
+            // 刚体属性 解除冻结
+            rb.constraints = RigidbodyConstraints.None;
+            //控制下质量
+            rb.mass = 1f;
+            //恢复物理系统对刚体的控制，开启重力，重置速度
+            rb.isKinematic = false;
+            rb.useGravity = true;
+            rb.velocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            // 计算碎片从中心往外的方向
+            Vector3 dir = (rb.worldCenterOfMass - center).normalized;
+            if (dir.sqrMagnitude < 0.01f)
+            {
+                // 方向太小 不可靠 随机一个方向
+                dir = UnityEngine.Random.onUnitSphere;
+            }
+            Debug.Log(rb.name + " mass = " + rb.mass);
+
+            //瞬间的力
+            rb.AddForce((dir + Vector3.up * upwardForce) * explosionForce, ForceMode.Impulse);
+            // 随即旋转
+            rb.AddTorque(UnityEngine.Random.insideUnitSphere * torqueForce, ForceMode.Impulse);
+        }
+    }
+    // 碎片变色
+    private void ApplyCurrentColorToFragments(GameObject breakObj)
+    {
+        Color color = GetColorByType(CurrentType);
+        MeshRenderer[] renderers = breakObj.GetComponentsInChildren<MeshRenderer>(true);
+
+        MaterialPropertyBlock block = new MaterialPropertyBlock();
+
+        foreach (MeshRenderer renderer in renderers)
+        {
+            renderer.GetPropertyBlock(block);
+            block.SetColor("_Color", color);
+            block.SetColor("_BaseColor", color);
+            renderer.SetPropertyBlock(block);
+        }
+    }
+
+    #endregion
 }
