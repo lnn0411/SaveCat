@@ -14,21 +14,47 @@ public class LevelManager : Singleton<LevelManager>
     [Header("Current Level")]
     public LevelConfigSO currentLevelConfig; //当前关卡配置
 
+    //当前关卡状态
+    private LevelState _levelState = LevelState.None;
     //总方块数
     private int totalBlocksToSpawn;
-    // 剩下的龙节段数
-    private int remainingDragonSegments;
+    //统计用 后续来用于验证
+    private int _totalDragonSegments;
+    private int _remainingDragonSegments;
 
     //获取场景内现成的依赖引用
     public Camera mainUIBottomCamera;
+    #region LiftCycle
+    private void OnEnable()
+    {
+        EventManager.AddListener<GmaeFailReason>(EventID.OnGameOver, OnGameOver);
+        EventManager.AddListener(EventID.OnLevelVictory, OnLevelVictory);
+    }
 
+    private void OnDisable()
+    {
+        EventManager.RemoveListener<GmaeFailReason>(EventID.OnGameOver, OnGameOver);
+        EventManager.RemoveListener(EventID.OnLevelVictory, OnLevelVictory);
+    }
+    #endregion
 
     #region 开始游戏
     public void StartLevel(LevelConfigSO config)
     {
+        if(config == null)
+        {
+            Debug.LogError("致命错误：未提供关卡配置！");
+            _levelState = LevelState.None;
+            return;
+        }
+
+        
         currentLevelConfig = config;
+        _levelState = LevelState.Playing;
+
         totalBlocksToSpawn = config.targetBlockCount;
-        remainingDragonSegments = totalBlocksToSpawn;
+        _totalDragonSegments = 0;
+        _remainingDragonSegments = 0;
 
         //生成 1：1的颜色池
         List<BlockType> colorPool = GenerateColorPool(totalBlocksToSpawn, config.dragonBodyTypes);
@@ -66,8 +92,9 @@ public class LevelManager : Singleton<LevelManager>
         DragonManager.Instance.Init(config, targetSpline, shuffledDragonColorPool);
 
         //防守方血量
-        remainingDragonSegments = shuffledDragonColorPool.Count;
-        Debug.Log($"[LevelManager] 关卡开始！总方块数: {totalBlocksToSpawn}, 龙的节数: {remainingDragonSegments}");
+        _totalDragonSegments = shuffledDragonColorPool.Count;
+        _remainingDragonSegments = _totalDragonSegments;
+        Debug.Log($"[LevelManager] 关卡开始！总方块数: {totalBlocksToSpawn}, 龙的节数: {_remainingDragonSegments}");
         
     }
 
@@ -119,4 +146,23 @@ public class LevelManager : Singleton<LevelManager>
     }
     #endregion
 
+    #region 监听游戏事件
+
+    private void OnGameOver(GmaeFailReason reason)
+    {
+        if(_levelState != LevelState.Playing) return;
+
+        Debug.Log($"[LevelManager] 游戏结束！失败原因：{reason}");
+        _levelState = LevelState.Lose;
+
+    }
+
+    private void OnLevelVictory()
+    {
+        if(_levelState != LevelState.Playing) return;
+        Debug.Log($"[LevelManager] 关卡胜利！");
+        _levelState = LevelState.win;
+    }
+
+    #endregion
 }

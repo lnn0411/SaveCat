@@ -40,6 +40,8 @@ public enum EventID
     OnBlockEscapeSuccess = 1000, //逃逸成功的方块
     OnBlockSlotted = 1001, //落入槽位的颜色
 
+    OnSlotFull = 1002, //槽位满了
+
 
 
     // ------------------战斗消灭------------------
@@ -51,4 +53,19 @@ public enum EventID
     OnLevelVictory = 3001, //关卡胜利
 }
 
-//
+//管卡状态
+public enum LevelState
+{
+    None,
+    Playing,
+    win,
+    Lose,
+    Resetting
+}
+
+//游戏失败原因
+public enum GmaeFailReason
+{
+    None,
+    DragonReachedCat
+}

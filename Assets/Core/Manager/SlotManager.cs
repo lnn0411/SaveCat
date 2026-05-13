@@ -168,6 +168,26 @@ public class SlotManager : Singleton<SlotManager>
     }
 
     /// <summary>
+    /// 当前是否还有空槽位。
+    /// </summary>
+    public bool HasFreeSlot()
+    {
+        return FindFirstEmptySlotIndex() >= 0;
+    }
+
+    /// <summary>
+    /// 获取第一个空槽位索引
+    /// 用来决定飞向哪个UI槽位
+    /// </summary>
+    /// <param name="emptySlotIndex"></param>
+    /// <returns></returns>
+    public bool TryGetFirstEmptySlotIndex(out int emptySlotIndex)
+    {
+        emptySlotIndex = FindFirstEmptySlotIndex();
+        return emptySlotIndex >= 0;
+    }
+
+    /// <summary>
     /// 收集当前所有可用弹药槽位
     /// </summary>
     /// <param name="result"></param>
@@ -319,7 +339,7 @@ public class SlotManager : Singleton<SlotManager>
         {
             Debug.Log($"弹药已满，无法添加新弹药：颜色={blockData.Type}, 强度={blockData.Length}");
             // 槽位满了 发出失败提示
-            EventManager.Broadcast(EventID.OnGameOver);
+            return;
         }
     }
 

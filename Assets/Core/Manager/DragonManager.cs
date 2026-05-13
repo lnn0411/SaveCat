@@ -144,7 +144,26 @@ public class DragonManager : Singleton<DragonManager>
     //回收Dragon相关的所有实例  包括头身体尾和猫咪 用于关卡重置
     private void RecycleCurrentDragon()
     {
-        if(PoolManager.Instance != null) return;
+        // 如果对象池不存在，说明当前无法安全回收，直接清引用即可。
+        if (PoolManager.Instance == null)
+        {
+            _headInstance = null;
+            _tailInstance = null;
+            _catInstance = null;
+            _activeSegments.Clear();
+            _segmentTimeTs.Clear();
+            ResetRecoilState();
+            return;
+        }
+
+        // 重开关卡前，先杀掉还在运行的回退 Tween。
+        // 否则 Tween 可能继续修改已经被回收/复用的对象，造成位置错乱。
+        if (_recoilTween != null && _recoilTween.IsActive())
+        {
+            _recoilTween.Kill();
+        }
+
+        _recoilTween = null;
         if(_headInstance != null)
         {
             PoolManager.Instance.Recycle(_headInstance);
@@ -208,6 +227,8 @@ public class DragonManager : Singleton<DragonManager>
             {
                 _headTimeT = 0.98f;
                 _currentState = DragonState.GameOver;
+                // 唯一失败来源
+                EventManager.Broadcast(EventID.OnGameOver, GmaeFailReason.DragonReachedCat);
                 Debug.Log("防守失败！");
             }
         }

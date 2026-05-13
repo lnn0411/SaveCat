@@ -99,6 +99,32 @@ public class BlockView : MonoBehaviour
     }
 
     /// <summary>
+    /// 槽满时的播放反馈
+    /// </summary>
+    public void PlaySlotFullFeedback()
+    {
+        Debug.Log($"Block {Data.Id} cannot escape because slots are full.");
+        if(boxCollider != null) boxCollider.enabled = false;
+        transform.DOKill();
+        Vector3 originalScale = transform.localScale;
+        Sequence seq = DOTween.Sequence();
+        seq.Append(transform.DOScale(originalScale * 1.08f, 0.08f).SetEase(Ease.OutQuad));
+        seq.Append(transform.DOShakePosition(
+            duration: 0.16f,
+            strength: new Vector3(0.12f,0,0.12f),
+            vibrato: 12
+        ));
+        seq.Append(transform.DOScale(originalScale, 0.08f).SetEase(Ease.InQuad));
+
+        seq.OnComplete(() =>
+        {
+            if(boxCollider != null) boxCollider.enabled = true;
+            transform.localScale = originalScale;
+        });
+        
+    }
+
+    /// <summary>
     /// 获取正确的逃离终点坐标后 播放飞出动画
     /// </summary>
     /// <param name="targetSlotPosition"></param>

@@ -76,10 +76,17 @@ public class BlockManager : Singleton<BlockManager>
     {
         int id = blockView.Data.Id;
 
+        //槽位满了则触发槽位满反馈
+        if(SlotManager.Instance != null && !SlotManager.Instance.HasFreeSlot())
+        {
+            Debug.Log($"[BlockManager] 槽位已满，方块 {id} 暂时不能逃逸");
+            EventManager.Broadcast(EventID.OnSlotFull);
+            blockView.PlaySlotFullFeedback();
+            return;
+        }
         //询问数据层 是否可以逃脱
         if(GridMapManager.Instance.CanBlockEscape(id, out int availableSteps))
         {
-            Debug.Log($"方块{id}可以逃脱，执行逃脱动画");
             // 抹除展位
             GridMapManager.Instance.RemoveBlockFromMap(id);
 
@@ -93,7 +100,6 @@ public class BlockManager : Singleton<BlockManager>
         }
         else
         {
-            Debug.Log($"方块{id}被阻挡，前方还有 {availableSteps} 格，播放撞墙反馈");
 
             blockView.PlayBlockedFeedback(availableSteps);
         }

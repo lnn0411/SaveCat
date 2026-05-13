@@ -111,7 +111,6 @@ public class DragonSegmentView:DragonBaseView
                 // 方向太小 不可靠 随机一个方向
                 dir = UnityEngine.Random.onUnitSphere;
             }
-            Debug.Log(rb.name + " mass = " + rb.mass);
 
             //瞬间的力
             rb.AddForce((dir + Vector3.up * upwardForce) * explosionForce, ForceMode.Impulse);
