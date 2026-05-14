@@ -1,6 +1,6 @@
 using System;
 using UnityEngine;
-
+using System.Collections;
 
 // 龙的每个Segment的View，负责显示和动画等视觉效果
 public class DragonSegmentView:DragonBaseView
@@ -11,12 +11,15 @@ public class DragonSegmentView:DragonBaseView
     [SerializeField] private MeshRenderer _renderer;
     private static MaterialPropertyBlock _mpb;
 
-    [Header("Break Effect")]
-    [SerializeField] private GameObject breakPrefab; // 拖 DragonSegmentSplice
-    [SerializeField] private float breakLifeTime = 1.2f;
-    [SerializeField] private float explosionForce = 0.05f;
-    [SerializeField] private float upwardForce = 0.01f;
-    [SerializeField] private float torqueForce = 4f;
+    [Header("Pooled Physics Break Effect")]
+    [SerializeField] private GameObject shardPrefab;
+    [SerializeField] private int shardCount = 10; //默认数量
+    [SerializeField] private float shardLifeTime = 1.7f; //生存时间
+    [SerializeField] private float shardForce = 1.0f; //飞散力度
+    [SerializeField] private float shardUpForce = 0.8f; //向上力度
+    [SerializeField] private float shardTorque = 6f; //旋转力度
+    [SerializeField] private float shardScale = 0.35f; //缩放比例
+    [SerializeField] private float shardSpawnRadius = 0.12f; //生成半径
 
     // 生成时的初始化
     public void InitializeData(BlockType type)
@@ -24,24 +27,10 @@ public class DragonSegmentView:DragonBaseView
         CurrentType = type;
         
         // 表现层的工作：根据接收到的数据枚举，去查表或用 switch 来换色
-        Color displayColor = GetColorByType(type);
+        Color displayColor = BlockColorUtility.GetColor(CurrentType);
         SetColor(displayColor);
     }
 
-    //颜色对应转换
-    private Color GetColorByType(BlockType type)
-    {
-        // 简易查表
-        switch (type)
-        {
-            case BlockType.Red: return Color.red;
-            case BlockType.Blue: return Color.blue;
-            case BlockType.Green: return Color.green;
-            case BlockType.Yellow: return Color.yellow;
-            case BlockType.Purple: return new Color(0.5f, 0, 0.5f);
-            default: return Color.white;
-        }
-    }
 
     //设置颜色
     public override void SetColor(Color color)
@@ -65,75 +54,62 @@ public class DragonSegmentView:DragonBaseView
     // 外界调用的
     public void PlayBreakAndRecycle(Action recycleRoot)
     {
-        if (breakPrefab != null)
-        {
-            // 当前位置实例化出来，并设置颜色 位置和旋转用当前龙身体的位置和旋转
-            GameObject breakObj = Instantiate(
-                breakPrefab,
-                transform.position,
-                transform.rotation
-            );
-            // 世界缩放
-            breakObj.transform.localScale = transform.lossyScale;
-            // 碎片颜色设置成当前身体颜色
-            ApplyCurrentColorToFragments(breakObj);
-            // 施加力
-            ExplodeFragments(breakObj);
-
-            Destroy(breakObj, breakLifeTime);
-        }
+        SpawnPhysicsShards();
 
         recycleRoot?.Invoke();
     }
 
-    private void ExplodeFragments(GameObject breakObj)
-    {   
-        // 记录爆炸中心和每个碎片的刚体
-        Vector3 center = transform.position;
-        Rigidbody[] bodies = breakObj.GetComponentsInChildren<Rigidbody>(true);
-
-        foreach (Rigidbody rb in bodies)
+    private void SpawnPhysicsShards()
+    {
+        if (shardPrefab == null || PoolManager.Instance == null)
         {
-            rb.gameObject.SetActive(true);
-            // 刚体属性 解除冻结
-            rb.constraints = RigidbodyConstraints.None;
-            //控制下质量
-            rb.mass = 1f;
-            //恢复物理系统对刚体的控制，开启重力，重置速度
-            rb.isKinematic = false;
-            rb.useGravity = true;
-            rb.velocity = Vector3.zero;
-            rb.angularVelocity = Vector3.zero;
-            // 计算碎片从中心往外的方向
-            Vector3 dir = (rb.worldCenterOfMass - center).normalized;
-            if (dir.sqrMagnitude < 0.01f)
+            return;
+        }
+
+        Color color = BlockColorUtility.GetColor(CurrentType);
+
+        for (int i = 0; i < shardCount; i++)
+        {
+            Vector3 offset = UnityEngine.Random.insideUnitSphere * shardSpawnRadius;
+            offset.y = Mathf.Abs(offset.y);
+
+            //随机位置在龙节周围的一个小球范围内，保证不会生成在地面以下
+            Vector3 spawnPos = transform.position + offset;
+
+            Vector3 dir = UnityEngine.Random.onUnitSphere;
+            dir.y = Mathf.Abs(dir.y) + shardUpForce;
+
+            Vector3 impulse = dir.normalized * shardForce;
+            Vector3 torque = UnityEngine.Random.insideUnitSphere * shardTorque;
+
+            GameObject shardObj = PoolManager.Instance.Get(
+                shardPrefab,
+                spawnPos,
+                UnityEngine.Random.rotation,
+                null
+            );
+
+            DragonShardView shard = shardObj.GetComponent<DragonShardView>();
+
+            if (shard == null)
             {
-                // 方向太小 不可靠 随机一个方向
-                dir = UnityEngine.Random.onUnitSphere;
+                PoolManager.Instance.Recycle(shardObj);
+                continue;
             }
 
-            //瞬间的力
-            rb.AddForce((dir + Vector3.up * upwardForce) * explosionForce, ForceMode.Impulse);
-            // 随即旋转
-            rb.AddTorque(UnityEngine.Random.insideUnitSphere * torqueForce, ForceMode.Impulse);
+            shard.Play(
+                color,
+                spawnPos,
+                transform.rotation,
+                Vector3.one * shardScale,
+                impulse,
+                torque,
+                shardLifeTime,
+                PoolManager.Instance.Recycle
+            );
         }
     }
-    // 碎片变色
-    private void ApplyCurrentColorToFragments(GameObject breakObj)
-    {
-        Color color = GetColorByType(CurrentType);
-        MeshRenderer[] renderers = breakObj.GetComponentsInChildren<MeshRenderer>(true);
 
-        MaterialPropertyBlock block = new MaterialPropertyBlock();
-
-        foreach (MeshRenderer renderer in renderers)
-        {
-            renderer.GetPropertyBlock(block);
-            block.SetColor("_Color", color);
-            block.SetColor("_BaseColor", color);
-            renderer.SetPropertyBlock(block);
-        }
-    }
 
     #endregion
 }

@@ -221,15 +221,8 @@ public class BlockView : MonoBehaviour
             Debug.LogError("MeshRenderer component is missing on BlockView.");
             return;
         }
-        Color color = Color.white;
-        switch(type)
-        {
-            case BlockType.Red: color = Color.red; break;
-            case BlockType.Blue: color = Color.blue; break;
-            case BlockType.Green: color = Color.green; break;
-            case BlockType.Yellow: color = Color.yellow; break;
-            case BlockType.Purple: color = new Color(0.5f, 0, 0.5f); break;
-        }
+        Color color = BlockColorUtility.GetColor(type);
+
         meshRenderer.material.color = color;
     }
 

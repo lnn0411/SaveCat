@@ -88,6 +88,7 @@ public class LevelManager : Singleton<LevelManager>
 
         // 获取路径预制体 后期可以放在管卡配置里面
         SplineContainer targetSpline = FindObjectOfType<SplineContainer>();
+        Debug.Log($"[LevelManager] 关卡初始化完成！实际生成方块数: {actualBoardBlocks.Count}, 龙的节数: {shuffledDragonColorPool.Count}");
         // 龙和猫咪出现
         DragonManager.Instance.Init(config, targetSpline, shuffledDragonColorPool);
 
