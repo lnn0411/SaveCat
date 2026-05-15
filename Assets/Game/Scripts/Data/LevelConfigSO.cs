@@ -22,8 +22,6 @@ public class LevelConfigSO : ScriptableObject
     [Header("Dragon Logic Settings")]
     public BlockType[] dragonBodyTypes; 
 
-    [Header("Block Setup(方块配置)")]
-    public GameObject blockPrefab;
     public int maxWidth = 10;
     public int maxHeight = 10;
     public int targetBlockCount = 20;
