@@ -81,23 +81,7 @@ public class GridMapManager : Singleton<GridMapManager>
             return false;
         }
 
-        Vector2Int current = block.GetHeadPosition();
-        Vector2Int stepDir = GetDirVector(block.Dir);
-        Vector2Int next = current + stepDir;
-
-        while (isCellValid(next.x, next.y))
-        {
-            if (!IsStepClear(current, next, block.Dir))
-            {
-                return false;
-            }
-
-            current = next;
-            next += stepDir;
-            availableSteps++;
-        }
-
-        return true;
+        return CanBlockEscapeBySweptFootprint(block, out availableSteps);
     }
 
     /// <summary>
@@ -220,39 +204,55 @@ public class GridMapManager : Singleton<GridMapManager>
     // 专门为“发牌测试”使用的一个重载，直接传入待定的 BlockData 看能否飞出，而不依赖已注册的 allBlocksData
     public bool CanBlockEscape(BlockData block)
     {
-        Vector2Int current = block.GetHeadPosition();
-        Vector2Int stepDir = GetDirVector(block.Dir);
-        Vector2Int next = current + stepDir;
+        return CanBlockEscapeBySweptFootprint(block, out _);
+    }
 
-        while (isCellValid(next.x, next.y))
+    private bool CanBlockEscapeBySweptFootprint(BlockData block, out int availableSteps)
+    {
+        availableSteps = 0;
+
+        Vector2Int step = DirectionUtility.ToGridVector(block.Dir);
+        if (step == Vector2Int.zero)
         {
-            if (!IsStepClear(current, next, block.Dir))
-            {
-                return false;
-            }
-
-            current = next;
-            next += stepDir;
+            return false;
         }
 
-        return true;
-    }
-    
-    //对角检查
-    private bool IsStepClear(Vector2Int current, Vector2Int next, Direction dir)
-    {
-        if(!isCellValid(next.x, next.y)) return true; 
-        if(mapGrid[next.x, next.y] != 0) return false;
+        List<Vector2Int> baseCells = block.GetOccupiedCells();
+        int maxMoveSteps = width + height + block.GridLength + 4;
 
-        if(!DirectionUtility.IsDiagonal(dir)) return true; //非对角线不需要检查 因为上面检查完了
+        for (int moveStep = 1; moveStep <= maxMoveSteps; moveStep++)
+        {
+            bool hasAnyCellInsideBoard = false;
+            Vector2Int offset = step * moveStep;
 
-        Vector2Int sideA = new Vector2Int(current.x, next.y);
-        Vector2Int sideB = new Vector2Int(next.x, current.y);
-        if(isCellValid(sideA.x, sideA.y) && mapGrid[sideA.x, sideA.y] != 0) return false;
-        if(isCellValid(sideB.x, sideB.y) && mapGrid[sideB.x, sideB.y] != 0) return false;
-        return true;
+            for (int i = 0; i < baseCells.Count; i++)
+            {
+                Vector2Int movedCell = baseCells[i] + offset;
+
+                if (!isCellValid(movedCell.x, movedCell.y))
+                {
+                    continue;
+                }
+
+                hasAnyCellInsideBoard = true;
+
+                int occupiedBy = mapGrid[movedCell.x, movedCell.y];
+                if (occupiedBy != 0 && occupiedBy != block.Id)
+                {
+                    return false;
+                }
+            }
+
+            availableSteps = moveStep;
+
+            if (!hasAnyCellInsideBoard)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
-    
     #endregion
 #endregion
 
@@ -261,12 +261,6 @@ public class GridMapManager : Singleton<GridMapManager>
     private bool isCellValid(int x, int y)
     {
         return x >= 0 && x < width && y >= 0 && y < height;
-    }
-
-    //方向转换为数值增量
-    private Vector2Int GetDirVector(Direction dir)
-    {
-        return DirectionUtility.ToGridVector(dir);
     }
 
     //生成对应路线
