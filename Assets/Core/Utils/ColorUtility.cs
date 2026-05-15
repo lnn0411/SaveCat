@@ -21,4 +21,13 @@ public static class BlockColorUtility
 
         return Color.white;
     }
+
+    public static readonly BlockType[] AttackColors =
+    {
+        BlockType.Red,
+        BlockType.Blue,
+        BlockType.Green,
+        BlockType.Yellow,
+        BlockType.Purple
+    };
 }

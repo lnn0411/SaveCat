@@ -19,9 +19,6 @@ public class SlotData
         IsReserved = false;
         StrengthCount = 0;
         ColorType = BlockType.None;
-
-        AttackActive = false;
-        NextAttackTime = 0f;
     }
 
     //装填弹药
@@ -39,18 +36,7 @@ public class SlotData
         IsReserved = true;
         StrengthCount = 0;
         ColorType = BlockType.None;
-        
-        AttackActive = false;
-        NextAttackTime = 0f;
     }
 #endregion
 
-#region 战斗相关的逻辑
-    //战斗是否激活       预定不激活
-    public bool AttackActive = false;
-    // 下一次攻击时间
-    public float NextAttackTime = 0f;
-    // 攻击间隔
-    public float AttackPhaseOffset = 0f;
-#endregion
 }
