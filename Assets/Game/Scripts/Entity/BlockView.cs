@@ -43,10 +43,10 @@ public class BlockView : MonoBehaviour
         SetRotationByDirection(data.Dir);
 
         //根据数据修改碰撞盒的尺寸和位置
-        transform.localScale = new Vector3(1,1,data.Length);
+        transform.localScale = Vector3.one;
 
         //碰撞盒中心需要根据长度和朝向进行调整，使其覆盖整个方块
-        boxCollider.size = Vector3.one;
+        boxCollider.size = new Vector3(1f, 1f, data.GridLength);
         boxCollider.center = Vector3.zero;
 
         //根据网格坐标 换算3D世界模型
@@ -56,7 +56,7 @@ public class BlockView : MonoBehaviour
         // 由于localscale的机制不是往前延长 而是中心向两旁发散，导致我们需要根据朝向把模型往前挪动半个长度，才能让碰撞盒正确覆盖
         // Unity 中心对齐放大，导致模型向 Local Z 轴反方向多延伸出了 ((Length - 1) / 2) 格的距离。
         // 我们必须把这个模型，顺着它的箭头方向(前进方向)硬推回去。
-        float forwardOffset = (data.Length - 1) * 0.5f * cellSize;
+        float forwardOffset = (data.GridLength - 1) * 0.5f * cellSize;
         // 算出推过去的最终 3D 坐标
         Vector3 alignedWorldPos = tailPosition + transform.forward * forwardOffset;
         transform.position = alignedWorldPos;
@@ -221,15 +221,8 @@ public class BlockView : MonoBehaviour
             Debug.LogError("MeshRenderer component is missing on BlockView.");
             return;
         }
-        Color color = Color.white;
-        switch(type)
-        {
-            case BlockType.Red: color = Color.red; break;
-            case BlockType.Blue: color = Color.blue; break;
-            case BlockType.Green: color = Color.green; break;
-            case BlockType.Yellow: color = Color.yellow; break;
-            case BlockType.Purple: color = new Color(0.5f, 0, 0.5f); break;
-        }
+        Color color = BlockColorUtility.GetColor(type);
+
         meshRenderer.material.color = color;
     }
 

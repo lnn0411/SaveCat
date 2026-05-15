@@ -25,7 +25,7 @@ public partial class SlotItemView : BaseView
         }
 
         if(contentRoot != null) contentRoot.gameObject.SetActive(true);
-        if(image != null) image.color = GetColorByType(_data.ColorType);
+        if(image != null) image.color = BlockColorUtility.GetColor(_data.ColorType);
         if(text != null) text.text = _data.StrengthCount.ToString();    
         
     }
@@ -46,22 +46,5 @@ public partial class SlotItemView : BaseView
         return contentRoot != null?contentRoot.transform as RectTransform:transform as RectTransform;
     }
 
-    private Color GetColorByType(BlockType type)
-    {
-        switch (type)
-        {
-            case BlockType.Red:
-                return Color.red;
-            case BlockType.Blue:
-                return Color.blue;
-            case BlockType.Green:
-                return Color.green;
-            case BlockType.Yellow:
-                return Color.yellow;
-            case BlockType.Purple:
-                return new Color(0.5f, 0f, 0.5f);
-            default:
-                return Color.white;
-        }
-    }
+   
 }

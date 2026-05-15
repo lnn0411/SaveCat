@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 // Manager管理规则
@@ -120,7 +121,37 @@ public class SlotManager : Singleton<SlotManager>
 #endregion
 
 #region 弹药逻辑
+    /// <summary>
+    /// 根据颜色来找到需要扣除弹药的槽位
+    /// 优先弹药最少的
+    /// </summary>
+    /// <returns></returns>
+    public bool TryGetBestAmmoSlotByColor(BlockType color, out int slotIndex, out SlotData _slotData)
+    {
+        slotIndex = -1;
+        _slotData = null;
 
+        if(color == BlockType.None) return false;
+
+        int bestStrength = int.MaxValue; 
+        for(int i = 0; i < _slots.Count; i++)
+        {
+            SlotData current = _slots[i];
+            if(current == null) continue;
+            if(current.IsEmpty || current.IsReserved) continue;
+            if(current.ColorType != color) continue;
+            if(current.StrengthCount <= 0) continue;
+
+            if(current.StrengthCount < bestStrength)
+            {
+                bestStrength = current.StrengthCount;
+                slotIndex = i;
+                _slotData = current;
+            }
+        }
+
+        return _slotData != null;
+    }
     /// <summary>
     /// 尝试加入新的弹药
     /// 每个方块占用一个槽位，StrengthCount 表示弹药数量
@@ -145,7 +176,7 @@ public class SlotManager : Singleton<SlotManager>
         RefreshSlotView(emptyIndex);
 
         //通知战斗系统 有新的弹药入槽位
-        EventManager.Broadcast(EventID.OnBlockSlotted);
+        EventManager.Broadcast(EventID.OnBlockSlotted, emptyIndex);
         return true;
     }
     // 写入预定的槽位
@@ -175,27 +206,9 @@ public class SlotManager : Singleton<SlotManager>
         slot.Load(colorType, strengthCount);
         RefreshSlotView(slotIndex);
 
-        EventManager.Broadcast(EventID.OnBlockSlotted);
+        EventManager.Broadcast(EventID.OnBlockSlotted, slotIndex);
 
         return true;
-    }
-
-    // 获取第一顺位弹药
-    public bool TryGetFirstAmmo(out int slotIndex, out SlotData slotData)
-    {
-        for(int i = 0; i < _slots.Count; i++)
-        {
-            if (!_slots[i].IsEmpty && _slots[i].StrengthCount > 0)
-            {
-                slotIndex = i;
-                slotData = _slots[i];
-                return true;
-            }
-        }
-
-        slotIndex = -1;
-        slotData = null;
-        return false;
     }
 
     /// <summary>
@@ -420,11 +433,11 @@ public class SlotManager : Singleton<SlotManager>
     {
         if(blockData == null) return;
 
-        bool success = TryAddAmmo(blockData.Type, blockData.Length);
+        bool success = TryAddAmmo(blockData.Type, blockData.StrengthCount);
 
         if(!success)
         {
-            Debug.Log($"弹药已满，无法添加新弹药：颜色={blockData.Type}, 强度={blockData.Length}");
+            Debug.Log($"弹药已满，无法添加新弹药：颜色={blockData.Type}, 强度={blockData.StrengthCount}");
             // 槽位满了 发出失败提示
             return;
         }

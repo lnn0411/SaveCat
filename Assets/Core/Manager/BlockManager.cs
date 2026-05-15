@@ -155,7 +155,7 @@ public class BlockManager : Singleton<BlockManager>
                     SlotManager.Instance.TryLoadReservedSlot(
                         targetSlotIndex,
                         blockView.Data.Type,
-                        blockView.Data.Length
+                        blockView.Data.StrengthCount
                     );
                 }
 
@@ -218,11 +218,17 @@ public class BlockManager : Singleton<BlockManager>
             // 从颜色池中获取颜色 先生成targetCount个方块的颜色，保证数量和颜色的1:1关系 后续长度数值可以由算法随机生成
             BlockType assignedType = _colorPool[currentCount];
             Direction randomDir = (Direction)Random.Range(0, 4);
-            int randomLength = Random.Range(2,5);
+            // 随机配置预制体
+            BlockSpec spec = GetRandomBlockSpec();
+            if(spec == null)
+            {
+                Debug.LogError("[BlockManager] 未配置方块预制体");
+                break;
+            }
             int randomX = Random.Range(0, mapWidth);
             int randomY = Random.Range(0, mapHeight);
             int testId = startBlockIdCounter;
-            BlockData testBlock = new BlockData(testId, assignedType, randomLength, randomDir, randomX, randomY);
+            BlockData testBlock = new BlockData(testId, assignedType, spec, randomDir, randomX, randomY);
             
             //第一重校验 判断是否可以放到目前的地图中 （不越界 不与现有方块重叠）
             if(!IsPositionValid(testBlock, mapWidth, mapHeight))
@@ -248,6 +254,15 @@ public class BlockManager : Singleton<BlockManager>
         }
         return spawnedDataList;
     }
+
+    //从配置里面随机获取一个方块规格
+    private BlockSpec GetRandomBlockSpec()
+    {
+        if(_config == null || _config.blockSpecs == null || _config.blockSpecs.Length == 0) return null;
+
+        return _config.blockSpecs[Random.Range(0, _config.blockSpecs.Length)];
+    }
+
 #endregion
 
 #region 辅助小工具
@@ -268,8 +283,9 @@ public class BlockManager : Singleton<BlockManager>
     // 根据数据生成 3D 实体
     private void InstantiateBlockView(BlockData data)
     {
+        GameObject prefab = data.Spec.prefab;
         // 从对象池索取 (假设你刚才根据 Config 注册了它)
-        GameObject blockObj = PoolManager.Instance.Get(_config.blockPrefab, Vector3.zero, Quaternion.identity, this.transform);
+        GameObject blockObj = PoolManager.Instance.Get(prefab, Vector3.zero, Quaternion.identity, this.transform);
         if (blockObj != null)
         {
             BlockView view = blockObj.GetComponent<BlockView>();

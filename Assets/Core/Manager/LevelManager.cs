@@ -77,7 +77,7 @@ public class LevelManager : Singleton<LevelManager>
         foreach(BlockData block in actualBoardBlocks)
         {
             //长度是几 就生成几节颜色的身体
-            for(int i = 0; i < block.Length; i++)
+            for(int i = 0; i < block.StrengthCount; i++)
             {
                 dragonColorPool.Add(block.Type);
             }
@@ -88,6 +88,7 @@ public class LevelManager : Singleton<LevelManager>
 
         // 获取路径预制体 后期可以放在管卡配置里面
         SplineContainer targetSpline = FindObjectOfType<SplineContainer>();
+        Debug.Log($"[LevelManager] 关卡初始化完成！实际生成方块数: {actualBoardBlocks.Count}, 龙的节数: {shuffledDragonColorPool.Count}");
         // 龙和猫咪出现
         DragonManager.Instance.Init(config, targetSpline, shuffledDragonColorPool);
 

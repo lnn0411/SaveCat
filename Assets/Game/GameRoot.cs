@@ -30,8 +30,6 @@ public class GameRoot : MonoBehaviour
 
         // UI管理
         coreGroup.AddComponent<UIManager>();
-        // 活动管理
-        coreGroup.AddComponent<ActivityManager>();
         // 槽位管理
         coreGroup.AddComponent<SlotManager>();
         // 匹配管理

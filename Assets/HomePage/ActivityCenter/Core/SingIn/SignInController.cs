@@ -1,84 +1,90 @@
-using System;
 using UnityEngine;
+using ActivityCenter.Core;
 
-/// <summary>
-/// SignInController 负责连接 SignInView 与 SignInData，接收 UI 事件并驱动数据更新。
-/// </summary>
-public class SignInController : MonoBehaviour
+namespace ActivityCenter.SignIn
 {
-    [Header("MVC Components")]
-    [SerializeField] private SignInData signInData;
-    [SerializeField] private SignInView signInView;
-
-    private void Awake()
+    public class SignInController : IActivityController
     {
-        if (signInData == null)
-        {
-            signInData = GetComponent<SignInData>();
-        }
+        private SignInData _data;
+        private SignInView _view;
+        private GameObject _uiInstance;
 
-        if (signInView == null)
+        public bool NeedUpdate => false;
+        // 打开界面的入口
+        public void Open()
         {
-            signInView = GetComponentInChildren<SignInView>(true);
-        }
-    }
+            if (_uiInstance != null) return; // 防止重复打开
 
-    private void Start()
-    {
-        if (signInData == null || signInView == null)
-        {
-            Debug.LogWarning("[SignInController] SignInData or SignInView is not assigned.");
-            return;
-        }
+            // 1. 初始化Model
+            _data = new SignInData();
+            _data.OnDataUpdated += UpdateView; // 监听数据变化
 
-        signInData.OnDataChanged += RefreshView;
-        signInView.BindController(this);
-        signInView.Initialize();
-        RefreshView();
-    }
-
-    private void OnDestroy()
-    {
-        if (signInData != null)
-        {
-            signInData.OnDataChanged -= RefreshView;
-        }
-    }
-
-    public void OnDayItemClicked(int dayIndex)
-    {
-        if (dayIndex == signInData.NextDayIndex && !signInData.HasSignedToday)
-        {
-            if (signInData.TrySignInToday())
+            // 2. 加载并实例化View (注意：Resources.Load 不需要文件后缀和 Assets/Resources/ 前缀)
+            GameObject prefab = Resources.Load<GameObject>("Prefab/Activity/SignIn/SignIn Canvas");
+            if (prefab == null)
             {
-                signInView.ShowFeedback("签到成功，明日继续加油！");
+                Debug.LogError("SignIn Canvas Prefab 路径错误或未找到！");
+                return;
             }
-            else
+            
+            _uiInstance = Object.Instantiate(prefab);
+            _view = _uiInstance.GetComponent<SignInView>();
+
+            // 3. 绑定View层的用户输入事件
+            _view.OnCloseClicked += Close;
+            _view.OnDayClicked += HandleDayClick;
+            _view.OnOneMoreAgainClicked += HandleOneMoreAgainClick;
+
+            // 4. 初次展示时刷新一次UI
+            UpdateView();
+        }
+
+        public void OnUpdate()
+        {
+        }
+        // 关闭界面的入口
+        public void Close()
+        {
+            if (_uiInstance != null)
             {
-                signInView.ShowFeedback("签到失败，请重试。");
+                Object.Destroy(_uiInstance);
+                _uiInstance = null;
+                _view = null;
+                
+                // 移除数据监听，防止内存泄漏
+                if (_data != null)
+                {
+                    _data.OnDataUpdated -= UpdateView;
+                    _data = null; 
+                }
             }
-            RefreshView();
         }
-        else
-        {
-            signInView.ShowFeedback("只能签到今天的日期！");
-        }
-    }
 
-    public void OnCloseButtonClicked()
-    {
-        if (ActivityManager.Instance != null)
+        private void HandleDayClick(int dayIndex)
         {
-            ActivityManager.Instance.CloseSignIn();
+            // 普通签到
+            _data.ExecuteSignIn(dayIndex, isDoubleReward: false);
         }
-        else
-        {
-            signInView.Hide();
-        }
-    }
 
-    private void RefreshView()
-    {
-        signInView.Refresh(signInData);
+        private void HandleOneMoreAgainClick()
+        {
+            // TODO: 在这里接入广告SDK逻辑
+            Debug.Log("播放广告中...");
+            bool isAdSuccess = true; // 模拟广告播放成功
+            
+            if (isAdSuccess)
+            {
+                // 双倍签到
+                _data.ExecuteSignIn(_data.CurrentDayIndex, isDoubleReward: true);
+            }
+        }
+
+        private void UpdateView()
+        {
+            if (_view != null && _data != null)
+            {
+                _view.RefreshUI(_data);
+            }
+        }
     }
 }

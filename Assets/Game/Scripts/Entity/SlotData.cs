@@ -5,13 +5,11 @@ using UnityEngine;
 // 纯数据结构 记录一个槽位中的当前情况
 public class SlotData 
 {
+#region UI相关的数据逻辑
     public bool IsEmpty = true;
-
     public bool IsReserved = false; //是否被预定了 预定了就不能再放入了 直到发射了才清除预定状态
-
     //当前拥有的颜色
     public BlockType ColorType;
-
     public int StrengthCount;
 
     //清空该数据槽位
@@ -39,4 +37,6 @@ public class SlotData
         StrengthCount = 0;
         ColorType = BlockType.None;
     }
+#endregion
+
 }

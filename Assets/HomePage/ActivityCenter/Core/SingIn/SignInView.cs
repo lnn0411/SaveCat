@@ -1,137 +1,49 @@
-using System;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
+using System;
 
-/// <summary>
-/// SignInView 负责显示签到界面和更新 UI 元素。
-/// </summary>
-public class SignInView : BaseView
+namespace ActivityCenter.SignIn
 {
-    [Header("Header")]
-    [SerializeField] private TMP_Text titleText;
-
-    [Header("Buttons")]
-    [SerializeField] private Button closeButton;
-
-    [Header("Day Items")]
-    [SerializeField] private List<DayItem> dayItems = new List<DayItem>();
-
-    [Header("Color Settings")]
-    [SerializeField] private Color signedColor = new Color(0.22f, 0.78f, 0.35f, 1f);
-    [SerializeField] private Color todayColor = new Color(0.96f, 0.78f, 0.18f, 1f);
-    [SerializeField] private Color pendingColor = Color.white;
-
-    private SignInController controller;
-
-    [Serializable]
-    private class DayItem
+    public class SignInView : MonoBehaviour
     {
-        public Button dayButton;
-        public TMP_Text dayLabel;
-        public TMP_Text rewardLabel;
-    }
+        [Header("UI References")]
+        public Button closeButton;
+        public Button oneMoreAgainButton;
+        public Button[] dayButtons; // 请在Inspector中按DayItem_1到7的顺序拖入
+        
+        // 供Controller监听的UI事件
+        public Action OnCloseClicked;
+        public Action<int> OnDayClicked;
+        public Action OnOneMoreAgainClicked;
 
-    public void BindController(SignInController controller)
-    {
-        this.controller = controller;
-    }
-
-    protected override void BindComponents()
-    {
-        if (titleText == null)
+        private void Awake()
         {
-            titleText = transform.Find("Title")?.GetComponent<TMP_Text>();
-        }
+            // 绑定基础按钮事件
+            closeButton.onClick.AddListener(() => OnCloseClicked?.Invoke());
+            oneMoreAgainButton.onClick.AddListener(() => OnOneMoreAgainClicked?.Invoke());
 
-        if (closeButton == null)
-        {
-            closeButton = transform.Find("CloseButton")?.GetComponent<Button>();
-        }
-    }
-
-    protected override void InitLogic()
-    {
-        if (closeButton != null)
-        {
-            closeButton.onClick.AddListener(OnCloseButtonClicked);
-        }
-
-        // DayItem buttons will be set in Refresh
-    }
-
-    protected override void OnHide()
-    {
-        if (closeButton != null)
-        {
-            closeButton.onClick.RemoveListener(OnCloseButtonClicked);
-        }
-
-        // Remove DayItem listeners
-        foreach (var item in dayItems)
-        {
-            if (item != null && item.dayButton != null)
+            // 绑定7天签到按钮事件
+            for (int i = 0; i < dayButtons.Length; i++)
             {
-                item.dayButton.onClick.RemoveAllListeners();
+                int index = i; // 捕获局部变量以供闭包使用
+                dayButtons[i].onClick.AddListener(() => OnDayClicked?.Invoke(index));
             }
         }
-    }
 
-    public void Refresh(SignInData data)
-    {
-        if (data == null)
+        // 唯一的刷新入口，根据传入的最新数据刷新UI状态
+        public void RefreshUI(SignInData data)
         {
-            return;
-        }
-
-        titleText.text = "每日签到";
-
-        for (int i = 0; i < dayItems.Count; i++)
-        {
-            var item = dayItems[i];
-            if (item == null || item.dayButton == null)
+            for (int i = 0; i < dayButtons.Length; i++)
             {
-                continue;
+                bool isSigned = data.SignedInDays[i];
+                // 仅当是今天且今天未签到时，对应的按钮才可交互
+                dayButtons[i].interactable = (i == data.CurrentDayIndex) && !data.HasSignedInToday && !isSigned;
+                
+                // TODO: 可以在这里添加打勾图标的显示/隐藏、已签到遮罩等表现逻辑
             }
 
-            item.dayLabel.text = $"第{i + 1}天";
-            item.rewardLabel.text = data.GetDayRewardText(i);
-
-            SignStatus status = data.GetSignStatus(i);
-            switch (status)
-            {
-                case SignStatus.Signed:
-                    item.dayButton.image.color = signedColor;
-                    item.dayButton.interactable = false;
-                    break;
-                case SignStatus.Today:
-                    item.dayButton.image.color = todayColor;
-                    item.dayButton.interactable = true;
-                    int dayIndex = i; // Capture for lambda
-                    item.dayButton.onClick.AddListener(() => OnDayItemClicked(dayIndex));
-                    break;
-                default:
-                    item.dayButton.image.color = pendingColor;
-                    item.dayButton.interactable = false;
-                    break;
-            }
+            // 如果今天已经签到，隐藏双倍广告按钮
+            oneMoreAgainButton.gameObject.SetActive(!data.HasSignedInToday);
         }
-    }
-
-    public void ShowFeedback(string message)
-    {
-        // Reserved for future use, e.g., OneMoreAgain button feedback
-        Debug.Log($"[SignInView] Feedback: {message}");
-    }
-
-    private void OnDayItemClicked(int dayIndex)
-    {
-        controller?.OnDayItemClicked(dayIndex);
-    }
-
-    private void OnCloseButtonClicked()
-    {
-        controller?.OnCloseButtonClicked();
     }
 }

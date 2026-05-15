@@ -18,11 +18,23 @@ MonoBehaviour:
   catPrefab: {fileID: 1174905760694234964, guid: 6d6a853963cd08c498d3277f0c02bfa3, type: 3}
   chaseSpeed: 0.15
   normalSpeed: 0.025
-  chaseEndThresholdT: 0.35
+  chaseEndThresholdT: 0.45
   spacing: 0.015
   initialSegmentCount: 20
   dragonBodyTypes: 0000000001000000010000000200000002000000020000000400000004000000030000000300000003000000010000000100000000000000000000000200000002000000030000000300000003000000
-  blockPrefab: {fileID: 2007966972340106889, guid: b941bd58b6e77344997c6f1129224672, type: 3}
   maxWidth: 10
   maxHeight: 10
-  targetBlockCount: 20
+  targetBlockCount: 5
+  blockSpecs:
+  - id: Block_4
+    gridLength: 2
+    strengthCount: 4
+    prefab: {fileID: 6232994628491953142, guid: b941bd58b6e77344997c6f1129224672, type: 3}
+  - id: Block_6
+    gridLength: 3
+    strengthCount: 6
+    prefab: {fileID: 3341515381493149446, guid: 550503f3df64df247b96b032ba0c1e2b, type: 3}
+  - id: Block_8
+    gridLength: 4
+    strengthCount: 8
+    prefab: {fileID: 7713276183103361262, guid: 95948fa9688e9924b8cb9c8f4a92c419, type: 3}

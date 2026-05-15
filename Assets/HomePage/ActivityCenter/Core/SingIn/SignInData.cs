@@ -1,121 +1,39 @@
 using System;
-using UnityEngine;
 
-/// <summary>
-/// SignInData 负责签到状态、签到规则和本地持久化。
-/// </summary>
-public class SignInData : MonoBehaviour
+namespace ActivityCenter.SignIn
 {
-    public const int TotalDays = 7;
-
-    [Header("SignIn State")]
-    [SerializeField] private int currentDayIndex = 0;
-    [SerializeField] private bool[] signedDays = new bool[TotalDays];
-
-    private const string LastSignDateKey = "SignIn_LastDate";
-    private const string CurrentDayIndexKey = "SignIn_CurrentDayIndex";
-
-    public event Action OnDataChanged;
-
-    public bool HasSignedToday { get; private set; }
-    public int NextDayIndex => Mathf.Clamp(currentDayIndex, 0, TotalDays - 1);
-    public int SignedCount { get; private set; }
-    public bool[] SignedDays => signedDays;
-
-    private string lastSignDate;
-    private string TodayString => DateTime.Now.ToString("yyyyMMdd");
-
-    private void Awake()
+    public class SignInData
     {
-        Load();
-    }
+        // 数据更新事件，供Controller监听
+        public event Action OnDataUpdated;
 
-    private void Load()
-    {
-        lastSignDate = PlayerPrefs.GetString(LastSignDateKey, string.Empty);
-        currentDayIndex = PlayerPrefs.GetInt(CurrentDayIndexKey, 0);
+        // 核心数据
+        public int CurrentDayIndex { get; private set; } // 0-6 对应第1天到第7天
+        public bool[] SignedInDays { get; private set; } 
+        public bool HasSignedInToday { get; private set; }
 
-        if (signedDays == null || signedDays.Length != TotalDays)
+        public SignInData()
         {
-            signedDays = new bool[TotalDays];
+            // 这里通常是从本地（如PlayerPrefs）或服务器读取数据进行初始化
+            // 此处使用模拟数据
+            SignedInDays = new bool[7];
+            CurrentDayIndex = 0; 
+            HasSignedInToday = false; 
         }
 
-        HasSignedToday = lastSignDate == TodayString;
-        SignedCount = 0;
-
-        for (int i = 0; i < TotalDays; i++)
+        // 签到逻辑
+        public void ExecuteSignIn(int dayIndex, bool isDoubleReward)
         {
-            if (signedDays[i])
+            if (dayIndex == CurrentDayIndex && !HasSignedInToday)
             {
-                SignedCount++;
+                SignedInDays[dayIndex] = true;
+                HasSignedInToday = true;
+                
+                // TODO: 结合实际系统，将奖励发放给玩家（单倍或双倍）
+                
+                // 数据更新完毕，通知外部
+                OnDataUpdated?.Invoke();
             }
         }
-
-        if (currentDayIndex > TotalDays)
-        {
-            currentDayIndex = TotalDays;
-        }
     }
-
-    private void Save()
-    {
-        PlayerPrefs.SetString(LastSignDateKey, lastSignDate);
-        PlayerPrefs.SetInt(CurrentDayIndexKey, currentDayIndex);
-        PlayerPrefs.Save();
-    }
-
-    public bool TrySignInToday()
-    {
-        if (HasSignedToday)
-        {
-            return false;
-        }
-
-        lastSignDate = TodayString;
-        HasSignedToday = true;
-
-        if (currentDayIndex < TotalDays)
-        {
-            signedDays[currentDayIndex] = true;
-            SignedCount++;
-        }
-
-        currentDayIndex = Mathf.Min(currentDayIndex + 1, TotalDays);
-        Save();
-        OnDataChanged?.Invoke();
-        return true;
-    }
-
-    public string GetDayRewardText(int dayIndex)
-    {
-        int rewardAmount = 50 + dayIndex * 10;
-        return $"第{dayIndex + 1}天：{rewardAmount}金币";
-    }
-
-    public SignStatus GetSignStatus(int dayIndex)
-    {
-        if (dayIndex < 0 || dayIndex >= TotalDays)
-        {
-            return SignStatus.Pending;
-        }
-
-        if (signedDays[dayIndex])
-        {
-            return SignStatus.Signed;
-        }
-
-        if (dayIndex == NextDayIndex && !HasSignedToday)
-        {
-            return SignStatus.Today;
-        }
-
-        return SignStatus.Pending;
-    }
-}
-
-public enum SignStatus
-{
-    Signed,
-    Today,
-    Pending
 }
