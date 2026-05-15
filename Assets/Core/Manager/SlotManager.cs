@@ -145,7 +145,7 @@ public class SlotManager : Singleton<SlotManager>
         RefreshSlotView(emptyIndex);
 
         //通知战斗系统 有新的弹药入槽位
-        EventManager.Broadcast(EventID.OnBlockSlotted);
+        EventManager.Broadcast(EventID.OnBlockSlotted, emptyIndex);
         return true;
     }
     // 写入预定的槽位
@@ -175,7 +175,7 @@ public class SlotManager : Singleton<SlotManager>
         slot.Load(colorType, strengthCount);
         RefreshSlotView(slotIndex);
 
-        EventManager.Broadcast(EventID.OnBlockSlotted);
+        EventManager.Broadcast(EventID.OnBlockSlotted, slotIndex);
 
         return true;
     }
