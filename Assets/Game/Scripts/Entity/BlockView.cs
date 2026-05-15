@@ -229,13 +229,7 @@ public class BlockView : MonoBehaviour
     //根据方块的朝向设置模型的旋转
     private void SetRotationByDirection(Direction dir)
     {
-        switch(dir)
-        {
-            case Direction.Up : transform.forward = Vector3.forward; break;
-            case Direction.Down : transform.forward = Vector3.back; break;
-            case Direction.Left : transform.forward = Vector3.left; break;
-            case Direction.Right : transform.forward = Vector3.right; break;
-        }
+        transform.rotation = DirectionUtility.ToRotation(dir);
     }
 
 #endregion

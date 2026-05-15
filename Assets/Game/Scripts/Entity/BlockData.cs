@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 /// <summary>
@@ -41,25 +42,29 @@ public class BlockData
     /// <returns></returns>
     public List<Vector2Int> GetOccupiedCells()
     {
-        var cells = new List<Vector2Int>();
-        for (int i = 0; i < this.GridLength; i++)
+        List<Vector2Int> cells = new List<Vector2Int>();
+        HashSet<Vector2Int> uniqueCells = new HashSet<Vector2Int>();
+        // 起点
+        Vector2Int origin = new Vector2Int(this.GridX, this.GridY);
+        //方向
+        Vector2Int step = DirectionUtility.ToGridVector(this.Dir);
+
+        for(int i = 0; i < GridLength; i++)
         {
-            switch (this.Dir)
+            //主格子对角线
+            Vector2Int mainCell = origin + step * i;
+            AddUnique(uniqueCells, cells, mainCell);
+            if(i > 0 && DirectionUtility.IsDiagonal(this.Dir))
             {
-                case Direction.Right:
-                    cells.Add(new Vector2Int(this.GridX + i, this.GridY));
-                    break;
-                case Direction.Left:
-                    cells.Add(new Vector2Int(this.GridX - i, this.GridY));
-                    break;
-                case Direction.Up:
-                    cells.Add(new Vector2Int(this.GridX, this.GridY + i));
-                    break;
-                case Direction.Down:
-                    cells.Add(new Vector2Int(this.GridX, this.GridY - i));
-                    break;
+                //上一个点
+                Vector2Int previous = origin + step * (i - 1);
+                //对角线从previous到mainCell 会盖住2&2中另外两格
+                AddUnique(uniqueCells, cells, new Vector2Int(previous.x, mainCell.y));
+                AddUnique(uniqueCells, cells, new Vector2Int(mainCell.x, previous.y));
             }
+
         }
+
         return cells;
     }
 
@@ -69,14 +74,22 @@ public class BlockData
     /// <returns></returns>
     public Vector2Int GetHeadPosition()
     {
-        Vector2Int head = new Vector2Int(this.GridX, this.GridY);
-        switch(this.Dir)
-        {
-            case Direction.Up: head.y += this.GridLength - 1; break;
-            case Direction.Down: head.y -= this.GridLength - 1; break;
-            case Direction.Right: head.x += this.GridLength - 1; break;
-            case Direction.Left: head.x -= this.GridLength - 1; break;
-        }
-        return head;
+        Vector2Int origin = new Vector2Int(GridX, GridY);
+        Vector2Int step = DirectionUtility.ToGridVector(Dir);
+        return origin + step * (GridLength - 1);
     }
+
+
+    #region 私人方法
+    // 增加经过点
+    private void AddUnique(HashSet<Vector2Int> unique, List<Vector2Int> cells, Vector2Int cell)
+    {
+        //未经过
+        if(unique.Add(cell))
+        {
+            cells.Add(cell);
+        }
+    }
+
+    #endregion
 }
