@@ -27,4 +27,17 @@ public class LevelConfigSO : ScriptableObject
     public int maxWidth = 10;
     public int maxHeight = 10;
     public int targetBlockCount = 20;
+
+    [Header("Block specs")]
+    public BlockSpec[] blockSpecs; //不同类型的方块规格
+}
+
+//方块
+[System.Serializable]
+public class BlockSpec
+{
+    public string id;
+    public int gridLength; //占据的格子长度
+    public int strengthCount; //弹药
+    public GameObject prefab;
 }

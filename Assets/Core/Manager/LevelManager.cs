@@ -77,7 +77,7 @@ public class LevelManager : Singleton<LevelManager>
         foreach(BlockData block in actualBoardBlocks)
         {
             //长度是几 就生成几节颜色的身体
-            for(int i = 0; i < block.Length; i++)
+            for(int i = 0; i < block.StrengthCount; i++)
             {
                 dragonColorPool.Add(block.Type);
             }

@@ -433,11 +433,11 @@ public class SlotManager : Singleton<SlotManager>
     {
         if(blockData == null) return;
 
-        bool success = TryAddAmmo(blockData.Type, blockData.Length);
+        bool success = TryAddAmmo(blockData.Type, blockData.StrengthCount);
 
         if(!success)
         {
-            Debug.Log($"弹药已满，无法添加新弹药：颜色={blockData.Type}, 强度={blockData.Length}");
+            Debug.Log($"弹药已满，无法添加新弹药：颜色={blockData.Type}, 强度={blockData.StrengthCount}");
             // 槽位满了 发出失败提示
             return;
         }

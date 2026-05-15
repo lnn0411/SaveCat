@@ -9,9 +9,13 @@ public class BlockData
 {
     public int Id;     //该方块的唯一标记
     public BlockType Type; //方块的类型（颜色）
-
+    public BlockSpec Spec;
     // 物理长度
-    public int Length; // 该方块占据的长度（单位：Segment数量）
+   // 地图占格长度
+    public int GridLength;
+
+    // 弹药数量 / 龙身节数
+    public int StrengthCount;
     public Direction Dir; // 该方块的朝向
 
     //二维网格中存放的虚拟坐标 起始点
@@ -19,11 +23,13 @@ public class BlockData
     public int GridY;
 
     // 构造函数
-    public BlockData(int id, BlockType type, int Length, Direction dir, int gridX, int gridY)
+    public BlockData(int id, BlockType type, BlockSpec spec, Direction dir, int gridX, int gridY)
     {
         this.Id = id;
         this.Type = type;
-        this.Length = Length;
+        this.Spec = spec;
+        this.GridLength = spec.gridLength;
+        this.StrengthCount = spec.strengthCount;
         this.Dir = dir;
         this.GridX = gridX;
         this.GridY = gridY;
@@ -36,7 +42,7 @@ public class BlockData
     public List<Vector2Int> GetOccupiedCells()
     {
         var cells = new List<Vector2Int>();
-        for (int i = 0; i < this.Length; i++)
+        for (int i = 0; i < this.GridLength; i++)
         {
             switch (this.Dir)
             {
@@ -66,10 +72,10 @@ public class BlockData
         Vector2Int head = new Vector2Int(this.GridX, this.GridY);
         switch(this.Dir)
         {
-            case Direction.Up: head.y += this.Length - 1; break;
-            case Direction.Down: head.y -= this.Length - 1; break;
-            case Direction.Right: head.x += this.Length - 1; break;
-            case Direction.Left: head.x -= this.Length - 1; break;
+            case Direction.Up: head.y += this.GridLength - 1; break;
+            case Direction.Down: head.y -= this.GridLength - 1; break;
+            case Direction.Right: head.x += this.GridLength - 1; break;
+            case Direction.Left: head.x -= this.GridLength - 1; break;
         }
         return head;
     }
