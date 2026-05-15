@@ -5,7 +5,7 @@ using ActivityCenter.Turntable; // 未来引入大转盘等模块
 using ActivityCenter.Task; // 引入任务模块
 using ActivityCenter.Expedition; // 引入远征模块
 using ActivityCenter.VideoPrivileges; // 引入视频权益模块
-// using ActivityCenter.GrandTreasury; // 引入 grand treasury 模块
+using ActivityCenter.GrandTreasury; // 引入 grand treasury 模块
 // using ActivityCenter.SwimmingCompetition; // 引入游泳比赛模块
 
 namespace ActivityCenter.Core
@@ -48,6 +48,7 @@ namespace ActivityCenter.Core
             _registeredModules.Add(ActivityType.Task, new TaskController());
             _registeredModules.Add(ActivityType.Expedition, new ExpeditionController());
             _registeredModules.Add(ActivityType.VideoPrivileges, new VideoPrivilegesController());
+            _registeredModules.Add(ActivityType.GrandTreasury, new GrandTreasuryController());
         }
 
         // --- 核心：集中轮询机制 ---
@@ -79,6 +80,7 @@ namespace ActivityCenter.Core
              // 未来添加新活动只需要在 ActivityView 添加按钮并监听，然后在这里加一行即可：
             _activityView.OnExpeditionClicked += () => OpenActivityModule(ActivityType.Expedition);
             _activityView.OnVideoPrivilegesClicked += () => OpenActivityModule(ActivityType.VideoPrivileges);
+            _activityView.OnGrandTreasuryClicked += () => OpenActivityModule(ActivityType.GrandTreasury);
         }
 
         private void OpenActivityModule(ActivityType type)
