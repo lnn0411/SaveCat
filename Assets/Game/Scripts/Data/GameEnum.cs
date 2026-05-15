@@ -26,10 +26,13 @@ public enum DragonState
 public enum Direction
 {
     Up,
+    UpRight,
+    Right,
+    DownRight,
     Down,
+    DownLeft,
     Left,
-    
-    Right
+    UpLeft
 }
 
 

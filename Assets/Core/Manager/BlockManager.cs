@@ -217,7 +217,7 @@ public class BlockManager : Singleton<BlockManager>
             retries++;
             // 从颜色池中获取颜色 先生成targetCount个方块的颜色，保证数量和颜色的1:1关系 后续长度数值可以由算法随机生成
             BlockType assignedType = _colorPool[currentCount];
-            Direction randomDir = (Direction)Random.Range(0, 4);
+            Direction randomDir = (Direction)Random.Range(0, DirectionUtility.DirectionCount);
             // 随机配置预制体
             BlockSpec spec = GetRandomBlockSpec();
             if(spec == null)
