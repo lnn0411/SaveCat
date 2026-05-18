@@ -281,18 +281,19 @@ public class GridMapManager : Singleton<GridMapManager>
     {
         return CanBlockEscapeBySweptFootprint(block, out _);
     }
-
+    // 当前方块是否可以飞出
     private bool CanBlockEscapeBySweptFootprint(BlockData block, out int availableSteps)
     {
         availableSteps = 0;
-
+        // 方向枚举转换成单位向量
         Vector2Int step = DirectionUtility.ToGridVector(block.Dir);
         if (step == Vector2Int.zero)
         {
             return false;
         }
-
+        // 当前方块占用的格子
         List<Vector2Int> baseCells = block.GetOccupiedCells();
+        // 保底上限
         int maxMoveSteps = width + height + block.GridLength + 4;
 
         for (int moveStep = 1; moveStep <= maxMoveSteps; moveStep++)
@@ -303,23 +304,23 @@ public class GridMapManager : Singleton<GridMapManager>
             for (int i = 0; i < baseCells.Count; i++)
             {
                 Vector2Int movedCell = baseCells[i] + offset;
-
+                // 是否出棋盘     可能逃逸了 但只要有一个格子还在棋盘内 就继续判断
                 if (!isCellValid(movedCell.x, movedCell.y))
                 {
                     continue;
                 }
-
+                // 有在里面的
                 hasAnyCellInsideBoard = true;
-
+                // 查看移动后的格子被谁占了
                 int occupiedBy = mapGrid[movedCell.x, movedCell.y];
                 if (occupiedBy != 0 && occupiedBy != block.Id)
                 {
                     return false;
                 }
             }
-
+            // 可以移动 +1步
             availableSteps = moveStep;
-
+            // 一直到没有在里面的才返回true
             if (!hasAnyCellInsideBoard)
             {
                 return true;

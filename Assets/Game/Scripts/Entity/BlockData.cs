@@ -102,6 +102,7 @@ public class BlockData
             //主格子对角线
             Vector2Int mainCell = origin + step * i;
             AddUnique(uniqueCells, cells, mainCell);
+            // 如果是斜对角
             if(i > 0 && DirectionUtility.IsDiagonal(this.Dir))
             {
                 //上一个点

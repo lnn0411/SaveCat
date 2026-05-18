@@ -50,22 +50,15 @@ public class BlockView : MonoBehaviour
         boxCollider.center = Vector3.zero;
 
         //根据网格坐标 换算3D世界模型
-        // 假定场景的零点在左下角，这里我们把网格索引乘以实体大小
-
+        // 注意 上下左右 和斜方向移动单位不一样
         Vector3 tailPosition = new Vector3(data.GridX * cellSize, 0, data.GridY * cellSize);
-        // 由于localscale的机制不是往前延长 而是中心向两旁发散，导致我们需要根据朝向把模型往前挪动半个长度，才能让碰撞盒正确覆盖
-        // Unity 中心对齐放大，导致模型向 Local Z 轴反方向多延伸出了 ((Length - 1) / 2) 格的距离。
-        // 我们必须把这个模型，顺着它的箭头方向(前进方向)硬推回去。
-        float forwardOffset = (data.GridLength - 1) * 0.5f * cellSize;
-        // 算出推过去的最终 3D 坐标
-        Vector3 alignedWorldPos = tailPosition + transform.forward * forwardOffset;
-        transform.position = alignedWorldPos;
-
-        // ✨ 初始化所有Effect
-        foreach (var effect in data.GetEffects())
-        {
-            effect.OnBlockInitialized(data, this);
-        }
+        // 获得当前方格的方向
+        Vector2Int gridStep = DirectionUtility.ToGridVector(data.Dir);
+        //世界方向
+        Vector3 worldGridStep = new Vector3(gridStep.x * cellSize, 0, gridStep.y * cellSize);
+        //根据方向和长度计算出方块头部相对于尾部的偏移
+        float centerStep = (data.GridLength - 1) * 0.5f; //中心点到头部的距离
+        transform.position = tailPosition + worldGridStep * centerStep;
     }
 
 
