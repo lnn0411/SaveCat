@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
-
 /// <summary>
 /// 逻辑数据地图管理器，负责维护网格数组，以及运算无物理引擎的碰撞解堵判定
 /// </summary>
@@ -82,30 +81,7 @@ public class GridMapManager : Singleton<GridMapManager>
             return false;
         }
 
-        //拿到方块车头所在的格子（逃逸时从这里开始向前探查）
-        Vector2Int headPos = block.GetHeadPosition();
-
-        //计算下一步方向的矢量
-        Vector2Int stepDir = GetDirVector(block.Dir);
-
-        //从车头前一格开始，一路向前推进
-        Vector2Int nextPos = headPos + stepDir;
-
-        //开始逃逸
-        while(isCellValid(nextPos.x, nextPos.y))
-        {
-            
-
-            if(mapGrid[nextPos.x, nextPos.y] != 0)
-            {
-                //前方有阻挡，无法逃离
-                return false;
-            }
-            nextPos += stepDir;
-            availableSteps++;
-        }
-        // 如果推进到地图边界，说明可以逃离
-        return true;
+        return CanBlockEscapeBySweptFootprint(block, out availableSteps);
     }
 
     /// <summary>
@@ -146,9 +122,19 @@ public class GridMapManager : Singleton<GridMapManager>
             out float topLaneZ
         );
         //将方块本身方向转换为逃跑路线方向
-        EscapeLane startLane = GetEscapeLane(block.Dir);
+        if (!TryGetEscapeExit(
+            block,
+            cellSize,
+            leftLaneX,
+            rightLaneX,
+            bottomLaneZ,
+            topLaneZ,
+            out EscapeLane startLane,
+            out Vector3 startPoint))
+        {
+            return false;
+        }
         // 外围的起始点坐标 棋盘逃逸的终点
-        Vector3 startPoint = GetLaneStartPoint(block, startLane, cellSize, leftLaneX, rightLaneX, bottomLaneZ, topLaneZ);
         //获得外围的终极坐标targetOnRing 方块的目标点 以及它落在哪条车道上
         EscapeLane targetLane = ProjectToClosestLane(
             targetWorldPoint,
@@ -218,16 +204,54 @@ public class GridMapManager : Singleton<GridMapManager>
     // 专门为“发牌测试”使用的一个重载，直接传入待定的 BlockData 看能否飞出，而不依赖已注册的 allBlocksData
     public bool CanBlockEscape(BlockData block)
     {
-        Vector2Int headPos = block.GetHeadPosition();
-        Vector2Int stepDir = GetDirVector(block.Dir);
-        Vector2Int nextPos = headPos + stepDir;
+        return CanBlockEscapeBySweptFootprint(block, out _);
+    }
 
-        while (isCellValid(nextPos.x, nextPos.y))
+    private bool CanBlockEscapeBySweptFootprint(BlockData block, out int availableSteps)
+    {
+        availableSteps = 0;
+
+        Vector2Int step = DirectionUtility.ToGridVector(block.Dir);
+        if (step == Vector2Int.zero)
         {
-            if(mapGrid[nextPos.x, nextPos.y] != 0) return false;
-            nextPos += stepDir;
+            return false;
         }
-        return true;
+
+        List<Vector2Int> baseCells = block.GetOccupiedCells();
+        int maxMoveSteps = width + height + block.GridLength + 4;
+
+        for (int moveStep = 1; moveStep <= maxMoveSteps; moveStep++)
+        {
+            bool hasAnyCellInsideBoard = false;
+            Vector2Int offset = step * moveStep;
+
+            for (int i = 0; i < baseCells.Count; i++)
+            {
+                Vector2Int movedCell = baseCells[i] + offset;
+
+                if (!isCellValid(movedCell.x, movedCell.y))
+                {
+                    continue;
+                }
+
+                hasAnyCellInsideBoard = true;
+
+                int occupiedBy = mapGrid[movedCell.x, movedCell.y];
+                if (occupiedBy != 0 && occupiedBy != block.Id)
+                {
+                    return false;
+                }
+            }
+
+            availableSteps = moveStep;
+
+            if (!hasAnyCellInsideBoard)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
     #endregion
 #endregion
@@ -237,19 +261,6 @@ public class GridMapManager : Singleton<GridMapManager>
     private bool isCellValid(int x, int y)
     {
         return x >= 0 && x < width && y >= 0 && y < height;
-    }
-
-    //方向转换为数值增量
-    private Vector2Int GetDirVector(Direction dir)
-    {
-        return dir switch
-        {
-            Direction.Up => new Vector2Int(0, 1),
-            Direction.Down => new Vector2Int(0, -1),
-            Direction.Left => new Vector2Int(-1, 0),
-            Direction.Right => new Vector2Int(1, 0),
-            _ => Vector2Int.zero
-        };
     }
 
     //生成对应路线
@@ -288,7 +299,124 @@ public class GridMapManager : Singleton<GridMapManager>
         }
     }
 
+    private bool TryGetEscapeExit(
+        BlockData block,
+        float cellSize,
+        float leftLaneX,
+        float rightLaneX,
+        float bottomLaneZ,
+        float topLaneZ,
+        out EscapeLane lane,
+        out Vector3 point)
+    {
+        lane = EscapeLane.Bottom;
+        point = Vector3.zero;
 
+        Vector2Int step = DirectionUtility.ToGridVector(block.Dir);
+        if (step == Vector2Int.zero)
+        {
+            return false;
+        }
+
+        Vector2Int current = block.GetHeadPosition();
+        Vector2Int next = current + step;
+
+        while (isCellValid(next.x, next.y))
+        {
+            current = next;
+            next += step;
+        }
+
+        Vector3 currentWorld = new Vector3(current.x * cellSize, 0f, current.y * cellSize);
+        Vector3 nextWorld = new Vector3(next.x * cellSize, 0f, next.y * cellSize);
+        Vector3 direction = nextWorld - currentWorld;
+
+        if (direction.sqrMagnitude <= 0.0001f)
+        {
+            return false;
+        }
+
+        direction.Normalize();
+
+        float bestT = float.PositiveInfinity;
+        EscapeLane bestLane = EscapeLane.Bottom;
+        Vector3 bestPoint = Vector3.zero;
+
+        TryCandidateLane(currentWorld, direction, EscapeLane.Right, rightLaneX, true, bottomLaneZ, topLaneZ, ref bestT, ref bestLane, ref bestPoint);
+        TryCandidateLane(currentWorld, direction, EscapeLane.Left, leftLaneX, true, bottomLaneZ, topLaneZ, ref bestT, ref bestLane, ref bestPoint);
+        TryCandidateLane(currentWorld, direction, EscapeLane.Top, topLaneZ, false, leftLaneX, rightLaneX, ref bestT, ref bestLane, ref bestPoint);
+        TryCandidateLane(currentWorld, direction, EscapeLane.Bottom, bottomLaneZ, false, leftLaneX, rightLaneX, ref bestT, ref bestLane, ref bestPoint);
+
+        if (float.IsPositiveInfinity(bestT))
+        {
+            return false;
+        }
+
+        lane = bestLane;
+        point = bestPoint;
+        return true;
+    }
+
+    private void TryCandidateLane(
+        Vector3 origin,
+        Vector3 direction,
+        EscapeLane lane,
+        float laneCoord,
+        bool isVerticalLane,
+        float minOtherCoord,
+        float maxOtherCoord,
+        ref float bestT,
+        ref EscapeLane bestLane,
+        ref Vector3 bestPoint)
+    {
+        const float epsilon = 0.0001f;
+
+        if (isVerticalLane)
+        {
+            if (Mathf.Abs(direction.x) < epsilon)
+            {
+                return;
+            }
+
+            float t = (laneCoord - origin.x) / direction.x;
+            if (t <= epsilon || t >= bestT)
+            {
+                return;
+            }
+
+            float z = origin.z + direction.z * t;
+            if (z < minOtherCoord - epsilon || z > maxOtherCoord + epsilon)
+            {
+                return;
+            }
+
+            bestT = t;
+            bestLane = lane;
+            bestPoint = new Vector3(laneCoord, 0f, Mathf.Clamp(z, minOtherCoord, maxOtherCoord));
+            return;
+        }
+
+        if (Mathf.Abs(direction.z) < epsilon)
+        {
+            return;
+        }
+
+        float horizontalT = (laneCoord - origin.z) / direction.z;
+        if (horizontalT <= epsilon || horizontalT >= bestT)
+        {
+            return;
+        }
+
+        float x = origin.x + direction.x * horizontalT;
+        if (x < minOtherCoord - epsilon || x > maxOtherCoord + epsilon)
+        {
+            return;
+        }
+
+        bestT = horizontalT;
+        bestLane = lane;
+        bestPoint = new Vector3(Mathf.Clamp(x, minOtherCoord, maxOtherCoord), 0f, laneCoord);
+    }
     /// <summary>
     /// 获取起始点坐标
     /// </summary>
