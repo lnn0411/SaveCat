@@ -71,6 +71,12 @@ public class LevelManager : Singleton<LevelManager>
         //生成方块 拿到实际摆放的方块数据（包含长度等信息，方便上级生成龙）
         List<BlockData> actualBoardBlocks = BlockManager.Instance.InitLevel(config, boardColorPool);
 
+        BlockEffectManager.AddFrozenEffectToRandomBlocks(
+            actualBoardBlocks,
+            BlockManager.Instance.GetAllBlockMappings(),
+            5
+        );
+
         //根据实际摆放方块的长度倍数，将其展开为龙的颜色列表
         List<BlockType> dragonColorPool = new List<BlockType>();
 

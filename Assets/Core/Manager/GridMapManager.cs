@@ -171,6 +171,40 @@ public class GridMapManager : Singleton<GridMapManager>
     }
 
     /// <summary>
+    /// 当Block向前移动撞到其他Block时，通知被撞Block身上的Effect
+    /// </summary>
+    public void TryNotifyForwardBlockingBlockHit(int movingBlockId)
+    {
+        if (!allBlocksData.TryGetValue(movingBlockId, out BlockData movingBlock))
+        {
+            return;
+        }
+
+        if (!TryGetFirstBlockingBlockOnForwardMove(movingBlock, out int blockingBlockId, out _))
+        {
+            return;
+        }
+
+        if (!allBlocksData.TryGetValue(blockingBlockId, out BlockData blockingBlock))
+        {
+            return;
+        }
+
+        foreach (var effect in blockingBlock.GetEffects())
+        {
+            effect.OnHitByOtherBlock(movingBlock);
+        }
+    }
+
+    /// <summary>
+    /// 兼容旧调用名：这里的Block不会逃逸，只会尝试撞击前方阻挡Block并触发解冻。
+    /// </summary>
+    public void TryUnfreezeBlockingBlock(int movingBlockId)
+    {
+        TryNotifyForwardBlockingBlockHit(movingBlockId);
+    }
+
+    /// <summary>
     /// 方块逃逸后 要从地图数据中移除该方块的占位信息
     /// </summary>
     /// <param name="blockId"></param>
@@ -189,6 +223,47 @@ public class GridMapManager : Singleton<GridMapManager>
         allBlocksData.Remove(blockId); // 从字典中移除数据
     }
 
+    /// <summary>
+    /// 兼容旧接口名。实际逻辑是检查是否存在其他Block向前移动时会撞到此Block。
+    /// </summary>
+    public bool HasBlockCanHitThis(BlockData block)
+    {
+        return CanBeHitByOtherBlocks(block);
+    }
+
+    /// <summary>
+    /// 检查是否存在未被忽略的其他Block，向自身方向移动时第一个撞到的Block就是目标Block。
+    /// </summary>
+    /// <param name="block">要检查的方块</param>
+    /// <returns>如果可以被撞击，返回true；否则返回false</returns>
+    public bool CanBeHitByOtherBlocks(BlockData block, HashSet<int> ignoredMovingBlockIds = null)
+    {
+        if (block == null)
+        {
+            return false;
+        }
+
+        foreach (var otherBlock in allBlocksData.Values)
+        {
+            if (otherBlock.Id == block.Id)
+            {
+                continue;
+            }
+
+            if (ignoredMovingBlockIds != null && ignoredMovingBlockIds.Contains(otherBlock.Id))
+            {
+                continue;
+            }
+
+            if (TryGetFirstBlockingBlockOnForwardMove(otherBlock, out int blockingBlockId, out _) &&
+                blockingBlockId == block.Id)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     #region 提供给数值生成器的查询接口
     // 查阅这几个格子是不是全都是空的(0)
@@ -249,6 +324,52 @@ public class GridMapManager : Singleton<GridMapManager>
             {
                 return true;
             }
+        }
+
+        return false;
+    }
+
+    private bool TryGetFirstBlockingBlockOnForwardMove(BlockData block, out int blockingBlockId, out int availableSteps)
+    {
+        blockingBlockId = -1;
+        availableSteps = 0;
+
+        if (block == null)
+        {
+            return false;
+        }
+
+        Vector2Int step = DirectionUtility.ToGridVector(block.Dir);
+        if (step == Vector2Int.zero)
+        {
+            return false;
+        }
+
+        List<Vector2Int> baseCells = block.GetOccupiedCells();
+        int maxMoveSteps = width + height + block.GridLength + 4;
+
+        for (int moveStep = 1; moveStep <= maxMoveSteps; moveStep++)
+        {
+            Vector2Int offset = step * moveStep;
+
+            for (int i = 0; i < baseCells.Count; i++)
+            {
+                Vector2Int movedCell = baseCells[i] + offset;
+
+                if (!isCellValid(movedCell.x, movedCell.y))
+                {
+                    continue;
+                }
+
+                int occupiedBy = mapGrid[movedCell.x, movedCell.y];
+                if (occupiedBy != 0 && occupiedBy != block.Id)
+                {
+                    blockingBlockId = occupiedBy;
+                    return true;
+                }
+            }
+
+            availableSteps = moveStep;
         }
 
         return false;

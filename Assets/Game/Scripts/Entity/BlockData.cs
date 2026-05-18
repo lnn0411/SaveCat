@@ -23,6 +23,9 @@ public class BlockData
     public int GridX;
     public int GridY;
 
+    // ✨ Effect系统
+    private List<IBlockEffect> _effects = new List<IBlockEffect>();
+
     // 构造函数
     public BlockData(int id, BlockType type, BlockSpec spec, Direction dir, int gridX, int gridY)
     {
@@ -34,6 +37,51 @@ public class BlockData
         this.Dir = dir;
         this.GridX = gridX;
         this.GridY = gridY;
+    }
+
+    /// <summary>
+    /// 添加一个效果到此Block
+    /// </summary>
+    public void AddEffect(IBlockEffect effect)
+    {
+        if (effect != null && !_effects.Contains(effect))
+        {
+            _effects.Add(effect);
+        }
+    }
+
+    /// <summary>
+    /// 移除一个效果
+    /// </summary>
+    public void RemoveEffect(IBlockEffect effect)
+    {
+        if (_effects.Remove(effect))
+        {
+            effect.OnEffectRemoved();
+        }
+    }
+
+    /// <summary>
+    /// 获取所有效果
+    /// </summary>
+    public List<IBlockEffect> GetEffects()
+    {
+        return new List<IBlockEffect>(_effects);
+    }
+
+    /// <summary>
+    /// 检查是否可以被点击（检查所有Effect）
+    /// </summary>
+    public bool CanBeClicked()
+    {
+        foreach (var effect in _effects)
+        {
+            if (!effect.CanBeClicked())
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     /// <summary>

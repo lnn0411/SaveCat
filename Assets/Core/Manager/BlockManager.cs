@@ -24,6 +24,9 @@ public class BlockManager : Singleton<BlockManager>
 
     private int startBlockIdCounter = 1; //用于生成唯一Id的计数器
 
+    // ✨ BlockData与BlockView的映射（用于添加Effect后初始化视觉）
+    private Dictionary<BlockData, BlockView> _blockDataToViewMap = new Dictionary<BlockData, BlockView>();
+
 #region 对外接口
 
     /// <summary>
@@ -33,6 +36,8 @@ public class BlockManager : Singleton<BlockManager>
     {
         _config = config;
         _colorPool = colorPool;
+        // ✨ 清除旧的映射
+        _blockDataToViewMap.Clear();
         // 初始化底层逻辑地图
         GridMapManager.Instance.InitMap(config.maxWidth, config.maxHeight);
 
@@ -85,9 +90,18 @@ public class BlockManager : Singleton<BlockManager>
 
         int id = blockView.Data.Id;
 
+        // ✨ 检查Block是否可以被点击（考虑所有效果）
+        if (!blockView.Data.CanBeClicked())
+        {
+            Debug.Log($"[BlockManager] Block {id} is frozen and cannot be clicked!");
+            blockView.PlayBlockedFeedback(0);
+            return;
+        }
+
         // 是否可以逃逸
         if (!GridMapManager.Instance.CanBlockEscape(id, out int availableSteps))
         {
+            GridMapManager.Instance.TryNotifyForwardBlockingBlockHit(id);
             blockView.PlayBlockedFeedback(availableSteps);
             return;
         }
@@ -290,7 +304,30 @@ public class BlockManager : Singleton<BlockManager>
         {
             BlockView view = blockObj.GetComponent<BlockView>();
             view.InitView(data, 1.0f);
+
+            // ✨ 记录BlockData->BlockView的映射
+            _blockDataToViewMap[data] = view;
         }
+    }
+
+    /// <summary>
+    /// 获取BlockData对应的BlockView（用于Effect初始化）
+    /// </summary>
+    public BlockView GetBlockViewByData(BlockData blockData)
+    {
+        if (_blockDataToViewMap.TryGetValue(blockData, out BlockView view))
+        {
+            return view;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// 获取所有Block的BlockData->BlockView映射（用于批量操作）
+    /// </summary>
+    public Dictionary<BlockData, BlockView> GetAllBlockMappings()
+    {
+        return new Dictionary<BlockData, BlockView>(_blockDataToViewMap);
     }
 #endregion
 

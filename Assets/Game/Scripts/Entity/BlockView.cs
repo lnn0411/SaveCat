@@ -60,6 +60,12 @@ public class BlockView : MonoBehaviour
         // 算出推过去的最终 3D 坐标
         Vector3 alignedWorldPos = tailPosition + transform.forward * forwardOffset;
         transform.position = alignedWorldPos;
+
+        // ✨ 初始化所有Effect
+        foreach (var effect in data.GetEffects())
+        {
+            effect.OnBlockInitialized(data, this);
+        }
     }
 
 
