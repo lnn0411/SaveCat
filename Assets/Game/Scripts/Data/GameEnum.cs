@@ -54,9 +54,16 @@ public enum EventID
     //------------------关卡生命周期------------------
     OnGameOver = 3000, //游戏结束
     OnLevelVictory = 3001, //关卡胜利
+
+    //------------------技能系统------------------
+    OnSkillUseFailed = 4000, //技能使用失败
+    OnSkillInventoryChanged = 4001, //技能数量发生变化
+    OnSlotUnlocked = 4002, //解锁对应的格子
+    OnSkillTargetModeChanged = 4003, //是否进入等待点击目标的状态
+
 }
 
-//管卡状态
+//关卡状态
 public enum LevelState
 {
     None,
@@ -80,4 +87,13 @@ public enum EscapeLane
     Right = 1,
     Bottom = 2,
     Left = 3
+}
+
+// 技能枚举
+public enum SkillType
+{
+    None,
+    UnlockSlot,
+    TapKill,
+    DragonRecolor
 }

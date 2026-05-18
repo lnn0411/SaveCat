@@ -34,6 +34,8 @@ public class GameRoot : MonoBehaviour
         coreGroup.AddComponent<SlotManager>();
         // 匹配管理
         coreGroup.AddComponent<MatchManager>();
+        // 技能管理
+        coreGroup.AddComponent<SkillManager>();
 
         // 打开槽位UI  必须在slotmanager后  因为要调用
         UIManager.Instance.OpenView("SlotPanel", BottomCanvas.transform);

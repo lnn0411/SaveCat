@@ -75,6 +75,13 @@ public class BlockManager : Singleton<BlockManager>
             BlockView clickedBlock = hit.collider.GetComponent<BlockView>();
             if(clickedBlock != null)
             {
+                //先让技能系统判断是否要接管此次点击
+                if(SkillManager.Instance != null && SkillManager.Instance.TryHandleBlockClick(clickedBlock))
+                {
+                    return; //技能系统接管了点击，不继续处理
+                }
+
+                //正常逻辑
                 ProcessBlockEscapeRequest(clickedBlock);
             }
         }
