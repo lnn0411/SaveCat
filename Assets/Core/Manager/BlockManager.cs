@@ -225,8 +225,10 @@ public class BlockManager : Singleton<BlockManager>
                 Debug.LogError("[BlockManager] 未配置方块预制体");
                 break;
             }
+            // 随机的坐标（我们后续会验证这个坐标是否合法，不合法就丢弃重试）
             int randomX = Random.Range(0, mapWidth);
             int randomY = Random.Range(0, mapHeight);
+            // 方块编号
             int testId = startBlockIdCounter;
             BlockData testBlock = new BlockData(testId, assignedType, spec, randomDir, randomX, randomY);
             
