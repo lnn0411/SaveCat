@@ -9,6 +9,9 @@ jobs:
       - name: Request activation file
         uses: game-ci/unity-request-activation-file@v2
         id: getManualLicenseFile
+        env:
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
         with:
           unityVersion: 2022.3.62f3c1
       - name: Upload activation file
