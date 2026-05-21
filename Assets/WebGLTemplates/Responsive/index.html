@@ -70,9 +70,9 @@
         container.className = "unity-mobile";
         canvas.className = "unity-mobile";
       } else {
-        // Desktop: responsive canvas fills viewport at 16:9
+        // Desktop: responsive portrait canvas at 9:16 with letterboxing
         function resizeCanvas() {
-          var aspect = 16 / 9;
+          var aspect = 9 / 16;
           var w = window.innerWidth;
           var h = window.innerHeight;
           var targetW, targetH;
