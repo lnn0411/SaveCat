@@ -1,47 +1,48 @@
-name: WebGL Build
-
-on:
-  workflow_dispatch:
-  push:
-    branches: [main]
-    paths-ignore:
-      - '**.md'
-      - '.github/**'
-
-jobs:
-  build:
-    name: Build WebGL
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          lfs: false
-      
-      - name: Cache Library
-        uses: actions/cache@v4
-        with:
-          path: Library
-          key: Library-WebGL-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
-          restore-keys: |
-            Library-WebGL-
-      
-      - name: Build Unity WebGL
-        uses: game-ci/unity-builder@v4
-        env:
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-        with:
-          targetPlatform: WebGL
-          buildMethod: BuildScript.BuildWebGL
-          versioning: None
-      
-      - name: Upload Build Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: SaveCat-WebGL
-          path: Builds/WebGL
-          retention-days: 30
+     1|name: WebGL Build
+     2|
+     3|on:
+     4|  workflow_dispatch:
+     5|  push:
+     6|    branches: [main]
+     7|    paths-ignore:
+     8|      - '**.md'
+     9|      - '.github/**'
+    10|
+    11|jobs:
+    12|  build:
+    13|    name: Build WebGL
+    14|    runs-on: ubuntu-latest
+    15|    timeout-minutes: 60
+    16|    
+    17|    steps:
+    18|      - name: Checkout
+    19|        uses: actions/checkout@v4
+    20|        with:
+    21|          lfs: true
+    22|      
+    23|      - name: Cache Library
+    24|        uses: actions/cache@v4
+    25|        with:
+    26|          path: Library
+    27|          key: Library-WebGL-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+    28|          restore-keys: |
+    29|            Library-WebGL-
+    30|      
+    31|      - name: Build Unity WebGL
+    32|        uses: game-ci/unity-builder@v4
+    33|        env:
+    34|          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+    35|          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+    36|          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+    37|        with:
+    38|          targetPlatform: WebGL
+    39|          buildMethod: BuildScript.BuildWebGL
+    40|          versioning: None
+    41|      
+    42|      - name: Upload Build Artifact
+    43|        uses: actions/upload-artifact@v4
+    44|        with:
+    45|          name: SaveCat-WebGL
+    46|          path: Builds/WebGL
+    47|          retention-days: 30
+    48|
