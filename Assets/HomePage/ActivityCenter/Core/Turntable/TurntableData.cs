@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace ActivityCenter.Turntable
 {
@@ -22,8 +23,23 @@ namespace ActivityCenter.Turntable
         {
             // 这里通常从本地存档或服务器读取数据
             UsedLevelsForDraw = 0; 
-            AdDrawsUsedToday = 0;
+            LoadFromPrefs();
             // _currentLevel = LevelManager.Instance.CurrentLevel;
+        }
+
+        private void LoadFromPrefs()
+        {
+            string lastDate = PlayerPrefs.GetString("Turntable_AdDrawsLastDate", "");
+            string today = DateTime.Today.ToString("yyyy-MM-dd");
+
+            if (lastDate == today)
+            {
+                AdDrawsUsedToday = PlayerPrefs.GetInt("Turntable_AdDrawsUsedToday", 0);
+            }
+            else
+            {
+                AdDrawsUsedToday = 0;
+            }
         }
 
         // 计算属性：是否可以免费抽奖
@@ -56,7 +72,15 @@ namespace ActivityCenter.Turntable
         public void RecordAdDraw()
         {
             AdDrawsUsedToday++;
+            SaveToPrefs();
             OnDataUpdated?.Invoke();
+        }
+
+        private void SaveToPrefs()
+        {
+            PlayerPrefs.SetInt("Turntable_AdDrawsUsedToday", AdDrawsUsedToday);
+            PlayerPrefs.SetString("Turntable_AdDrawsLastDate", DateTime.Today.ToString("yyyy-MM-dd"));
+            PlayerPrefs.Save();
         }
     }
 }
